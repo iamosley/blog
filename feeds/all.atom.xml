@@ -28,6 +28,7 @@
 &lt;/pre&gt;&lt;/div&gt;
 
 
+&lt;p&gt;&lt;img alt="Alt text" src="./slider.png"&gt;&lt;/p&gt;
 &lt;h3&gt;Let's break this down:&lt;/h3&gt;
 &lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;SelectionRangeSlider
 &lt;/pre&gt;&lt;/div&gt;
@@ -97,6 +98,7 @@ Let's have a look.&lt;/p&gt;
 &lt;/pre&gt;&lt;/div&gt;
 
 
+&lt;p&gt;&lt;img alt="Alt text" src="./DefaultGrid.png"&gt;&lt;/p&gt;
 &lt;h2&gt;Woah. Let's review.&lt;/h2&gt;
 &lt;p&gt;Our widgets are layed out as a two-by-two grid:&lt;br&gt;
 - &lt;b&gt;Radio buttons&lt;/b&gt; and a &lt;b&gt;slider&lt;/b&gt; are on the first row, and &lt;br&gt;
@@ -137,6 +139,7 @@ widget_rows[1].children[0]&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;widget_rows[1]
 &lt;/pre&gt;&lt;/div&gt;
 
 
+&lt;p&gt;&lt;img alt="Alt text" src="./OrderMade.png"&gt;&lt;/p&gt;
 &lt;h2&gt;Why all the index nonsense?&lt;/h2&gt;
 &lt;p&gt;Yes, probably more difficult than it needs to be for just four widgets. But the advantage of an iterable set of HBox widgets with multiple children is that each widget can be accessed with loops in an M x N way. No need to code multiple unique widget names, just put them in lists for rows and children.&lt;/p&gt;
 &lt;h1&gt;What's next?&lt;/h1&gt;
