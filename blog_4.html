@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <title>Widgets</title>
+ <!-- Latest compiled and minified CSS -->
+ <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css" integrity="sha384-HSMxcRTRxnN+Bdg0JdbxYKrThecOKuH5zCYotlSAcp1+c8xmyTe9GYg1l9a69psu" crossorigin="anonymous">
+ <div class="container">
+  <h1><a href="https://iamosley.github.io/blog">blog</a></h1>
+ </div>
+</head>
+<body>
+ <div class="container">
+<div class="row">
+ <div class="col-md-8">
+  <h3>Widgets</h3>
+  <label>2019-03-31</label>
+  <h1>Introduction</h1>
+<p>No matter what you do in data science, you need data! Arghhh! <br><br> You have to: 
+- find it
+- describe it 
+- load it
+- explore it, </p>
+<p>and <b>then</b> you can start engineering and doing cool science. In this first blog 🎉 I will introduce a simple data filtering notebook that is interactive. A big part of the interactivity are Jupyter <a href="https://ipywidgets.readthedocs.io/en/stable/examples/Widget%20Basics.html">ipywidgets</a> which allows GUI interaction with the IPYTHON kernel. </p>
+<h1>A tiny widget</h1>
+<h3>Here is a widget:</h3>
+<div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">ipywidgets</span> <span class="kn">as</span> <span class="nn">widgets</span>
+<span class="n">widgets</span><span class="o">.</span><span class="n">SelectionRangeSlider</span><span class="p">(</span>
+            <span class="n">options</span><span class="o">=</span><span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">11</span><span class="p">)],</span>
+            <span class="n">index</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">9</span><span class="p">),</span>
+            <span class="n">description</span><span class="o">=</span><span class="s1">&#39;A slider&#39;</span><span class="p">,</span>
+            <span class="n">disabled</span><span class="o">=</span><span class="bp">False</span>
+        <span class="p">)</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>SelectionRangeSlider(description=&#39;A slider&#39;, index=(0, 9), options=(1, 2, 3, 4, 5, 6, 7, 8, 9, 10), value=(1, …
+</pre></div>
+
+
+<h3>Let's break this down:</h3>
+<div class="highlight"><pre><span></span>SelectionRangeSlider
+</pre></div>
+
+
+<p>Is one type of widget. There are also:<br>
+- Progress bars
+- Text boxes
+- Toggle buttons
+- Checkboxes
+- etc.</p>
+<p>For most widgets there are minimum set of parameters:<br></p>
+<div class="highlight"><pre><span></span>options=[i for i in range(1, 11)],
+index=(0, 9),
+description=&#39;A slider&#39;,
+disabled=False
+</pre></div>
+
+
+<p>In the case of a range slider, "options" provides the widget with range of values it can display. "index" is an <b>integer</b> tuple of numbers that specifies the minimum and maximum index for your <i>options</i>. "description" is text to display beside the slider. "disabled" indicates if the widget should be shown.  </p>
+<h1>Combining widgets</h1>
+<p>Widgets can contain widgets. Nifty. These are called <i>container</i> widgets and help arrange their <b>child</b> widgets on the page. They can be formatted horizontally with an "HBox" widget or vertically with "VBox". HBoxes and Vboxes can contain each other, so its possible to make an N x M table of widgets. The possibilities are endless!!!<br><br>
+Let's have a look.</p>
+<div class="highlight"><pre><span></span><span class="c1"># widgets for the first row</span>
+<span class="n">right_widget_1</span> <span class="o">=</span> <span class="n">widgets</span><span class="o">.</span><span class="n">SelectionRangeSlider</span><span class="p">(</span>
+    <span class="n">options</span><span class="o">=</span><span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">11</span><span class="p">)],</span>
+    <span class="n">index</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">9</span><span class="p">),</span>
+    <span class="n">description</span><span class="o">=</span><span class="s1">&#39;A slider&#39;</span><span class="p">,</span>
+    <span class="n">disabled</span><span class="o">=</span><span class="bp">False</span>
+<span class="p">)</span>
+<span class="n">left_widget_1</span> <span class="o">=</span> <span class="n">widgets</span><span class="o">.</span><span class="n">RadioButtons</span><span class="p">(</span>
+    <span class="n">options</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;pepperoni&#39;</span><span class="p">,</span> <span class="s1">&#39;hawaiian&#39;</span><span class="p">,</span> <span class="s1">&#39;vegetarian&#39;</span><span class="p">],</span>
+    <span class="n">description</span><span class="o">=</span><span class="s1">&#39;Pizza:&#39;</span><span class="p">,</span>
+    <span class="n">disabled</span><span class="o">=</span><span class="bp">False</span>
+<span class="p">)</span>
+<span class="c1"># widgets for the second row</span>
+<span class="n">right_widget_2</span> <span class="o">=</span> <span class="n">widgets</span><span class="o">.</span><span class="n">Textarea</span><span class="p">(</span>
+    <span class="n">value</span><span class="o">=</span><span class="s2">&quot;I&#39;m empty. Sad.&quot;</span><span class="p">,</span>
+    <span class="n">placeholder</span><span class="o">=</span><span class="s1">&#39;Type something&#39;</span><span class="p">,</span>
+    <span class="n">description</span><span class="o">=</span><span class="s1">&#39;String:&#39;</span><span class="p">,</span>
+    <span class="n">disabled</span><span class="o">=</span><span class="bp">False</span>
+<span class="p">)</span>
+<span class="n">left_widget_2</span> <span class="o">=</span> <span class="n">widgets</span><span class="o">.</span><span class="n">Button</span><span class="p">(</span>
+    <span class="n">description</span><span class="o">=</span><span class="s1">&#39;Click me&#39;</span><span class="p">,</span>
+    <span class="n">disabled</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+    <span class="n">button_style</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span>
+    <span class="n">tooltip</span><span class="o">=</span><span class="s1">&#39;Click me&#39;</span><span class="p">,</span>
+    <span class="n">icon</span><span class="o">=</span><span class="s1">&#39;check&#39;</span>
+<span class="p">)</span>
+<span class="c1"># make two rows of widgets</span>
+<span class="n">widget_row_1</span> <span class="o">=</span> <span class="n">widgets</span><span class="o">.</span><span class="n">HBox</span><span class="p">([</span><span class="n">left_widget_1</span><span class="p">,</span> <span class="n">right_widget_1</span><span class="p">])</span>
+<span class="n">widget_row_2</span> <span class="o">=</span> <span class="n">widgets</span><span class="o">.</span><span class="n">HBox</span><span class="p">([</span><span class="n">left_widget_2</span><span class="p">,</span> <span class="n">right_widget_2</span><span class="p">])</span>
+
+<span class="c1"># create a list for our rows</span>
+<span class="n">widget_rows</span> <span class="o">=</span> <span class="p">[]</span>
+
+<span class="c1"># add the rows</span>
+<span class="n">widget_rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">widget_row_1</span><span class="p">)</span>
+<span class="n">widget_rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">widget_row_2</span><span class="p">)</span>
+
+<span class="c1"># now arrange the rows vertically (stack them)</span>
+<span class="n">display</span><span class="p">(</span><span class="n">widgets</span><span class="o">.</span><span class="n">VBox</span><span class="p">(</span><span class="n">widget_rows</span><span class="p">))</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>VBox(children=(HBox(children=(RadioButtons(description=&#39;Pizza:&#39;, options=(&#39;pepperoni&#39;, &#39;hawaiian&#39;, &#39;vegetarian…
+</pre></div>
+
+
+<h2>Woah. Let's review.</h2>
+<p>Our widgets are layed out as a two-by-two grid:<br>
+- <b>Radio buttons</b> and a <b>slider</b> are on the first row, and <br>
+- a <b>check box</b> and <b>text box</b> are on the second row.<br></p>
+<p><i>Awesome</i></p>
+<h2>Accessing widgets...</h2>
+<p>Individual widgets are accessed by index. There are two row widgets, widget_rows[0, 1], and each row has children, children[0, 1] which corresponds to the left and right widgets respectively. So thinking about this as a grid:<br><br>
+widget_rows[0].children[0]&nbsp;&nbsp;&nbsp;&nbsp;widget_rows[0].children[1]<br>
+widget_rows[1].children[0]&nbsp;&nbsp;&nbsp;&nbsp;widget_rows[1].children[1]</p>
+<h3>...and their values</h3>
+<p>Most widgets have a <i>value</i> property. In the case of a radio button it is the index of the selected item, for a slider it is a list of two values, the minimum and maximum.</p>
+<div class="highlight"><pre><span></span><span class="p">[</span><span class="n">lower</span><span class="p">,</span> <span class="n">upper</span><span class="p">]</span> <span class="o">=</span> <span class="n">widget_rows</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">children</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">value</span>
+<span class="k">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;The slider range is {lower} to {upper}.&#39;</span><span class="p">)</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>The slider range is 1 to 10.
+</pre></div>
+
+
+<h2>Eventful.</h2>
+<p>Each widget creates events, when the user interacts with the widget. When a button is clicked, an event is generated. To make the event meaningful, it must be bound to a function that does something else.</p>
+<div class="highlight"><pre><span></span><span class="c1"># create a function to be bound to the button</span>
+<span class="c1"># don&#39;t know why the &#39;b&#39; is required...</span>
+<span class="k">def</span> <span class="nf">update_order</span><span class="p">(</span><span class="n">b</span><span class="p">):</span>
+    <span class="c1"># what kind of pizza has been order?</span>
+    <span class="n">pizza</span> <span class="o">=</span> <span class="n">widget_rows</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">children</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">value</span>
+    <span class="c1"># how many might be ordered</span>
+    <span class="n">min_quantity</span><span class="p">,</span> <span class="n">max_quantity</span> <span class="o">=</span> <span class="n">widget_rows</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">children</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">value</span>
+    <span class="c1"># create the order text</span>
+    <span class="n">order</span> <span class="o">=</span> <span class="n">f</span><span class="s2">&quot;I need between {min_quantity} and {max_quantity} {pizza} pizzas.&quot;</span>
+    <span class="c1"># update the text area which is on the 2nd row and right position: row 1 and child 1</span>
+    <span class="n">widget_rows</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">children</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">order</span>
+
+<span class="c1"># bind the button (which is on the 2nd row, left column: row 1 and child 0)</span>
+<span class="c1"># &#39;on_click&#39; event to the function &#39;update_order&#39; </span>
+<span class="n">widget_rows</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">children</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">on_click</span><span class="p">(</span><span class="n">update_order</span><span class="p">)</span>
+</pre></div>
+
+
+<h2>Why all the index nonsense?</h2>
+<p>Yes, probably more difficult than it needs to be for just four widgets. But the advantage of an iterable set of HBox widgets with multiple children is that each widget can be accessed with loops in an M x N way. No need to code multiple unique widget names, just put them in lists for rows and children.</p>
+<h1>What's next?</h1>
+<p>Surprisingly, this is all going somewhere. I wanted to figure out an iterable way of managing widgets so I could 'attach' them to features in a data frame and manipulate the features (mainly filtering).<br><br>
+In my next post, I'll introduce my "Data Digger"</p>
+ </div>
+</div>
+ </div>
+</body>
+</html>
