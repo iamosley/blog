@@ -1,5 +1,137 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>blog - Ian Mosley</title><link href="https://iamosley.github.io/blog/" rel="alternate"></link><link href="https://iamosley.github.io/blog/feeds/ian-mosley.atom.xml" rel="self"></link><id>https://iamosley.github.io/blog/</id><updated>2019-03-31T21:58:00-04:00</updated><entry><title>Widgets</title><link href="https://iamosley.github.io/blog/blog_4.html" rel="alternate"></link><published>2019-03-31T21:58:00-04:00</published><updated>2019-03-31T21:58:00-04:00</updated><author><name>Ian Mosley</name></author><id>tag:iamosley.github.io,2019-03-31:/blog/blog_4.html</id><summary type="html">&lt;h1&gt;Introduction&lt;/h1&gt;
+<feed xmlns="http://www.w3.org/2005/Atom"><title>blog - Ian Mosley</title><link href="https://iamosley.github.io/blog/" rel="alternate"></link><link href="https://iamosley.github.io/blog/feeds/ian-mosley.atom.xml" rel="self"></link><id>https://iamosley.github.io/blog/</id><updated>2019-06-17T14:22:00-04:00</updated><entry><title>Stencil Fonts 1</title><link href="https://iamosley.github.io/blog/blog_005.html" rel="alternate"></link><published>2019-06-17T14:22:00-04:00</published><updated>2019-06-17T14:22:00-04:00</updated><author><name>Ian Mosley</name></author><id>tag:iamosley.github.io,2019-06-17:/blog/blog_005.html</id><summary type="html">&lt;h1&gt;Recognition of Dashed Stencil Fonts&lt;/h1&gt;
+&lt;p&gt;For many years the ability of computers to optically recognize characters (OCR) has been considered a solved problem. Computer models such as Tesseract and FastText can identify and label characters, words, sentences and paragraphs without diffuculty with high reliability and accuracy. Currently these abilities are …&lt;/p&gt;</summary><content type="html">&lt;h1&gt;Recognition of Dashed Stencil Fonts&lt;/h1&gt;
+&lt;p&gt;For many years the ability of computers to optically recognize characters (OCR) has been considered a solved problem. Computer models such as Tesseract and FastText can identify and label characters, words, sentences and paragraphs without diffuculty with high reliability and accuracy. Currently these abilities are being extended to other non-Laten alphabets with Tesseract version 4.0. Moreover, it is well within the skill of a non-computer scientist (given enough patience) to train these techniques for new languages given enough example (i.e. training) data.&lt;/p&gt;
+&lt;p&gt;What has not been attempted (or at least published) is the recognition of stencil fonts that regularly appear in land survey plans. Here is an example:&lt;/p&gt;
+&lt;p&gt;&lt;img alt="alt text" src="./images/blog_005/Lawrence.png"&gt;&lt;/p&gt;
+&lt;p&gt;What makes this font troublesome for OCR are the unique dashed '--' style of the font, and for all but the most labour intense &lt;em&gt;letter boxing&lt;/em&gt; style training models, the vertical gaps present a real challenge since most OCR systems assume this is the start of a new character (in this project I'll use the term character interchangeably with letter (which can also include numbers)).&lt;/p&gt;
+&lt;h2&gt;Project Objective&lt;/h2&gt;
+&lt;p&gt;The principal objective is to recognize dashed stencil fonts and return a list of letters. So for the image above, a positive result is:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="n"&gt;letters&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;L&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;A&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;W&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;R&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;E&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;N&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;C&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;E&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;&lt;em&gt;(One thing making the challenge easier is there are only upper-case fonts, lower-case are never used.)&lt;/em&gt;
+A secondary objective is identifying the fonts within the context of the drawing itself. Unlike OCR that uses images from scanned books, the survey plans have many other types of fonts plus drawing elements too (after all, they a plans where geometry is the central piece of information conveyed).&lt;/p&gt;
+&lt;h2&gt;Context and Terminology&lt;/h2&gt;
+&lt;p&gt;So, let's see a survey plan:&lt;/p&gt;
+&lt;p&gt;&lt;img alt="alt_text" src="./images/blog_005/66428_for_clipping_of_pointers.png"&gt;&lt;/p&gt;
+&lt;p&gt;I've drawn a red box around "Lawrence" for easy identification, and also pointed out other stencil fonts of varying sizes. Note that rotated text recognition is beyond the scope of this project.&lt;/p&gt;
+&lt;h3&gt;How to discribe a dashed font&lt;/h3&gt;
+&lt;p&gt;Here are the main concepts:
+- A file with graphics is called an image
+- An image is a collection of glyphs
+- A single glyph that is part of a recognizeable letter is characterized as a &lt;em&gt;'segment'&lt;/em&gt;
+- During the recognization process, a glyph or segment is labeled
+- A labeled segment has a geometric centroid&lt;/p&gt;
+&lt;p&gt;Let's have a look pictorially:&lt;/p&gt;
+&lt;p&gt;&lt;img alt="alt_text" src="./images/blog_005/Lawrence4.png"&gt;&lt;/p&gt;
+&lt;p&gt;A segment or an entire letter has a 'shape' which is the range of its &lt;em&gt;x&lt;/em&gt; and &lt;em&gt;y&lt;/em&gt; dimensions. For image processing, x is vertical and y is horizontal (however, Tesseract does not follow this practise!).&lt;/p&gt;
+&lt;h2&gt;The Tools&lt;/h2&gt;
+&lt;p&gt;A requisite objective of this project is to enhance my knowledge of Python and "Data Science"-like methodologies. Therefore, I did not use any advanced deep-learning models, but kept everything within a Python context. Specifically, here is what got things started:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;sys&lt;/span&gt;
+&lt;span class="k"&gt;print&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;sys&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;version&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;3.6.8 |Anaconda, Inc.| (default, Dec 29 2018, 19:04:46) 
+[GCC 4.2.1 Compatible Clang 4.0.1 (tags/RELEASE_401/final)]
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;numpy&lt;/span&gt;
+&lt;span class="n"&gt;numpy&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;version&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;version&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&amp;#39;1.15.4&amp;#39;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;sklearn&lt;/span&gt;
+&lt;span class="n"&gt;sklearn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;__version__&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&amp;#39;0.20.2&amp;#39;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;pandas&lt;/span&gt; &lt;span class="kn"&gt;as&lt;/span&gt; &lt;span class="nn"&gt;pd&lt;/span&gt;
+&lt;span class="n"&gt;pd&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;__version__&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&amp;#39;0.24.1&amp;#39;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;PIL&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;Image&lt;/span&gt;
+&lt;span class="n"&gt;Image&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;__version__&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&amp;#39;5.4.1&amp;#39;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;scipy&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;ndimage&lt;/span&gt;
+&lt;span class="n"&gt;ndimage&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;__version__&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&amp;#39;2.0&amp;#39;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;plotly_express&lt;/span&gt; &lt;span class="kn"&gt;as&lt;/span&gt; &lt;span class="nn"&gt;px&lt;/span&gt;
+&lt;span class="n"&gt;px&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;__version__&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&amp;#39;0.1.7&amp;#39;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;seaborn&lt;/span&gt; &lt;span class="kn"&gt;as&lt;/span&gt; &lt;span class="nn"&gt;sns&lt;/span&gt;
+&lt;span class="n"&gt;sns&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;__version__&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&amp;#39;0.9.0&amp;#39;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;matplotlib&lt;/span&gt;
+&lt;span class="n"&gt;matplotlib&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;__version__&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&amp;#39;3.0.2&amp;#39;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;imageio&lt;/span&gt;
+&lt;span class="n"&gt;imageio&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;__version__&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&amp;#39;2.5.0&amp;#39;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;pytesseract&lt;/span&gt;
+&lt;span class="n"&gt;pytesseract&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;get_tesseract_version&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;LooseVersion (&amp;#39;4.0.0&amp;#39;)
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;h2&gt;Next Post:&lt;/h2&gt;
+&lt;h3&gt;Image cleaning.&lt;/h3&gt;
+&lt;h4&gt;Always need sharp, well defined images in singleband greyscale to start things off.&lt;/h4&gt;</content><category term="python"></category><category term="jupyter"></category></entry><entry><title>Widgets</title><link href="https://iamosley.github.io/blog/blog_4.html" rel="alternate"></link><published>2019-03-31T21:58:00-04:00</published><updated>2019-03-31T21:58:00-04:00</updated><author><name>Ian Mosley</name></author><id>tag:iamosley.github.io,2019-03-31:/blog/blog_4.html</id><summary type="html">&lt;h1&gt;Introduction&lt;/h1&gt;
 &lt;p&gt;No matter what you do in data science, you need data! Arghhh! &lt;br&gt;&lt;br&gt; You have to: 
 - find it
 - describe it 
@@ -28,7 +160,7 @@
 &lt;/pre&gt;&lt;/div&gt;
 
 
-&lt;p&gt;&lt;img alt="Alt text" src="./images/blog_4/Slider.png"&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="Alt text" src="./images/blog_4/slider.png"&gt;&lt;/p&gt;
 &lt;h3&gt;Let's break this down:&lt;/h3&gt;
 &lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;SelectionRangeSlider
 &lt;/pre&gt;&lt;/div&gt;
@@ -141,7 +273,4 @@ widget_rows[1].children[0]&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;widget_rows[1]
 
 &lt;p&gt;&lt;img alt="Alt text" src="./images/blog_4/OrderMade.png"&gt;&lt;/p&gt;
 &lt;h2&gt;Why all the index nonsense?&lt;/h2&gt;
-&lt;p&gt;Yes, probably more difficult than it needs to be for just four widgets. But the advantage of an iterable set of HBox widgets with multiple children is that each widget can be accessed with loops in an M x N way. No need to code multiple unique widget names, just put them in lists for rows and children.&lt;/p&gt;
-&lt;h1&gt;What's next?&lt;/h1&gt;
-&lt;p&gt;Surprisingly, this is all going somewhere. I wanted to figure out an iterable way of managing widgets so I could 'attach' them to features in a data frame and manipulate the features (mainly filtering).&lt;br&gt;&lt;br&gt;
-In my next post, I'll introduce my "Data Digger"&lt;/p&gt;</content><category term="python"></category><category term="jupyter"></category></entry></feed>
+&lt;p&gt;Yes, probably more difficult than it needs to be for just four widgets. But the advantage of an iterable set of HBox widgets with multiple children is that each widget can be accessed with loops in an M x N way. No need to code multiple unique widget names, just put them in lists for rows and children.&lt;/p&gt;</content><category term="python"></category><category term="jupyter"></category></entry></feed>

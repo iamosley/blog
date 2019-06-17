@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <title>Stencil Fonts 1</title>
+ <!-- Latest compiled and minified CSS -->
+ <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css" integrity="sha384-HSMxcRTRxnN+Bdg0JdbxYKrThecOKuH5zCYotlSAcp1+c8xmyTe9GYg1l9a69psu" crossorigin="anonymous">
+ <div class="container">
+  <h1><a href="https://iamosley.github.io/blog">blog</a></h1>
+ </div>
+</head>
+<body>
+ <div class="container">
+<div class="row">
+ <div class="col-md-8">
+  <h3>Stencil Fonts 1</h3>
+  <label>2019-06-17</label>
+  <h1>Recognition of Dashed Stencil Fonts</h1>
+<p>For many years the ability of computers to optically recognize characters (OCR) has been considered a solved problem. Computer models such as Tesseract and FastText can identify and label characters, words, sentences and paragraphs without diffuculty with high reliability and accuracy. Currently these abilities are being extended to other non-Laten alphabets with Tesseract version 4.0. Moreover, it is well within the skill of a non-computer scientist (given enough patience) to train these techniques for new languages given enough example (i.e. training) data.</p>
+<p>What has not been attempted (or at least published) is the recognition of stencil fonts that regularly appear in land survey plans. Here is an example:</p>
+<p><img alt="alt text" src="./images/blog_005/Lawrence.png"></p>
+<p>What makes this font troublesome for OCR are the unique dashed '--' style of the font, and for all but the most labour intense <em>letter boxing</em> style training models, the vertical gaps present a real challenge since most OCR systems assume this is the start of a new character (in this project I'll use the term character interchangeably with letter (which can also include numbers)).</p>
+<h2>Project Objective</h2>
+<p>The principal objective is to recognize dashed stencil fonts and return a list of letters. So for the image above, a positive result is:</p>
+<div class="highlight"><pre><span></span><span class="n">letters</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;L&#39;</span><span class="p">,</span><span class="s1">&#39;A&#39;</span><span class="p">,</span><span class="s1">&#39;W&#39;</span><span class="p">,</span><span class="s1">&#39;R&#39;</span><span class="p">,</span><span class="s1">&#39;E&#39;</span><span class="p">,</span><span class="s1">&#39;N&#39;</span><span class="p">,</span><span class="s1">&#39;C&#39;</span><span class="p">,</span><span class="s1">&#39;E&#39;</span><span class="p">]</span>
+</pre></div>
+
+
+<p><em>(One thing making the challenge easier is there are only upper-case fonts, lower-case are never used.)</em>
+A secondary objective is identifying the fonts within the context of the drawing itself. Unlike OCR that uses images from scanned books, the survey plans have many other types of fonts plus drawing elements too (after all, they a plans where geometry is the central piece of information conveyed).</p>
+<h2>Context and Terminology</h2>
+<p>So, let's see a survey plan:</p>
+<p><img alt="alt_text" src="./images/blog_005/66428_for_clipping_of_pointers.png"></p>
+<p>I've drawn a red box around "Lawrence" for easy identification, and also pointed out other stencil fonts of varying sizes. Note that rotated text recognition is beyond the scope of this project.</p>
+<h3>How to discribe a dashed font</h3>
+<p>Here are the main concepts:
+- A file with graphics is called an image
+- An image is a collection of glyphs
+- A single glyph that is part of a recognizeable letter is characterized as a <em>'segment'</em>
+- During the recognization process, a glyph or segment is labeled
+- A labeled segment has a geometric centroid</p>
+<p>Let's have a look pictorially:</p>
+<p><img alt="alt_text" src="./images/blog_005/Lawrence4.png"></p>
+<p>A segment or an entire letter has a 'shape' which is the range of its <em>x</em> and <em>y</em> dimensions. For image processing, x is vertical and y is horizontal (however, Tesseract does not follow this practise!).</p>
+<h2>The Tools</h2>
+<p>A requisite objective of this project is to enhance my knowledge of Python and "Data Science"-like methodologies. Therefore, I did not use any advanced deep-learning models, but kept everything within a Python context. Specifically, here is what got things started:</p>
+<div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">sys</span>
+<span class="k">print</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">version</span><span class="p">)</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>3.6.8 |Anaconda, Inc.| (default, Dec 29 2018, 19:04:46) 
+[GCC 4.2.1 Compatible Clang 4.0.1 (tags/RELEASE_401/final)]
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span>
+<span class="n">numpy</span><span class="o">.</span><span class="n">version</span><span class="o">.</span><span class="n">version</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>&#39;1.15.4&#39;
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">sklearn</span>
+<span class="n">sklearn</span><span class="o">.</span><span class="n">__version__</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>&#39;0.20.2&#39;
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pandas</span> <span class="kn">as</span> <span class="nn">pd</span>
+<span class="n">pd</span><span class="o">.</span><span class="n">__version__</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>&#39;0.24.1&#39;
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">PIL</span> <span class="kn">import</span> <span class="n">Image</span>
+<span class="n">Image</span><span class="o">.</span><span class="n">__version__</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>&#39;5.4.1&#39;
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">scipy</span> <span class="kn">import</span> <span class="n">ndimage</span>
+<span class="n">ndimage</span><span class="o">.</span><span class="n">__version__</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>&#39;2.0&#39;
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">plotly_express</span> <span class="kn">as</span> <span class="nn">px</span>
+<span class="n">px</span><span class="o">.</span><span class="n">__version__</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>&#39;0.1.7&#39;
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">seaborn</span> <span class="kn">as</span> <span class="nn">sns</span>
+<span class="n">sns</span><span class="o">.</span><span class="n">__version__</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>&#39;0.9.0&#39;
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">matplotlib</span>
+<span class="n">matplotlib</span><span class="o">.</span><span class="n">__version__</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>&#39;3.0.2&#39;
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">imageio</span>
+<span class="n">imageio</span><span class="o">.</span><span class="n">__version__</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>&#39;2.5.0&#39;
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pytesseract</span>
+<span class="n">pytesseract</span><span class="o">.</span><span class="n">get_tesseract_version</span><span class="p">()</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>LooseVersion (&#39;4.0.0&#39;)
+</pre></div>
+
+
+<h2>Next Post:</h2>
+<h3>Image cleaning.</h3>
+<h4>Always need sharp, well defined images in singleband greyscale to start things off.</h4>
+ </div>
+</div>
+ </div>
+</body>
+</html>
