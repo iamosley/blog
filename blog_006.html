@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <title>Stencil Fonts 2</title>
+ <!-- Latest compiled and minified CSS -->
+ <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css" integrity="sha384-HSMxcRTRxnN+Bdg0JdbxYKrThecOKuH5zCYotlSAcp1+c8xmyTe9GYg1l9a69psu" crossorigin="anonymous">
+ <div class="container">
+  <h1><a href="https://iamosley.github.io/blog">blog</a></h1>
+ </div>
+</head>
+<body>
+ <div class="container">
+<div class="row">
+ <div class="col-md-8">
+  <h3>Stencil Fonts 2</h3>
+  <label>2019-06-18</label>
+  <h1>Cleanup Input Files</h1>
+<p>From the same input file -- converted from a pdf -- create three files for processing:</p>
+<ol>
+<li>The main inference file that has white/black split at a grey level of 150</li>
+<li>A file used by the Tesseract OCR utility that is either white (255) or black (0)</li>
+<li>Sample letters for training</li>
+</ol>
+<div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">imageio</span>
+<span class="kn">from</span> <span class="nn">PIL</span> <span class="kn">import</span> <span class="n">Image</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">filter_grey_scale</span><span class="p">(</span><span class="n">in_image</span><span class="p">,</span> <span class="n">out_image</span><span class="p">,</span> <span class="n">grey_split</span><span class="o">=</span><span class="mi">150</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Create an &#39;L&#39; band image (greyscale only) with pixels filtered</span>
+<span class="sd">    on a value of [grey_split]. Above this value, pixles are white (255)</span>
+<span class="sd">    otherwise black (0)</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">img</span> <span class="o">=</span> <span class="n">Image</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">in_image</span><span class="p">)</span><span class="o">.</span><span class="n">convert</span><span class="p">(</span><span class="s1">&#39;L&#39;</span><span class="p">)</span> <span class="c1"># instead of &#39;LA&#39;</span>
+
+    <span class="c1"># convert the PIL image to an numpy array</span>
+    <span class="n">face</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="n">face</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">face</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+
+    <span class="c1"># toggle the pixels to black (0) or white (255) depending on the grey split threshold </span>
+    <span class="n">face_filtered</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">face</span> <span class="o">&lt;=</span> <span class="n">grey_split</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">)</span>
+    <span class="n">face_filtered</span> <span class="o">=</span> <span class="n">face_filtered</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;uint8&#39;</span><span class="p">)</span>
+
+    <span class="n">imageio</span><span class="o">.</span><span class="n">imwrite</span><span class="p">(</span><span class="n">out_image</span><span class="p">,</span> <span class="n">face_filtered</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">face_filtered</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="n">original_image</span> <span class="o">=</span> <span class="n">filter_grey_scale</span><span class="p">(</span><span class="s1">&#39;./data/source_images/66428.png&#39;</span><span class="p">,</span> <span class="s1">&#39;./data/output/00_66428_for_clipping.png&#39;</span><span class="p">)</span> <span class="c1"># default filter of 150 greyscale</span>
+<span class="n">_</span> <span class="o">=</span> <span class="n">filter_grey_scale</span><span class="p">(</span><span class="s1">&#39;./data/source_images/66428.png&#39;</span><span class="p">,</span> <span class="s1">&#39;./data/output/00_66428_for_OCR.png&#39;</span><span class="p">,</span> <span class="mi">254</span><span class="p">)</span> <span class="c1"># sharp filter for any non-white pixel</span>
+<span class="n">_</span> <span class="o">=</span> <span class="n">filter_grey_scale</span><span class="p">(</span><span class="s1">&#39;./data/source_images/SampleLetters.png&#39;</span><span class="p">,</span> <span class="s1">&#39;./data/output/00_SampleLetters.png&#39;</span><span class="p">,</span> <span class="mi">254</span><span class="p">)</span> <span class="c1"># harsh filter for letters</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>(2850, 3450) uint8
+(2850, 3450) uint8
+(1008, 792) uint8
+</pre></div>
+
+
+<h2>Why Remove Grey Scale Pixels?</h2>
+<p>In most applications of OCR, greyscale pixels are significant and aid in determining the shape of the font as dithering is typically implemented when the resolution of the image is poor. However, for this project, a clean, i.e. sharp, delineation between glyphs is important so accurate centroids can be calculated.</p>
+<p>Consider the image below:
+<img alt="alt_text" src="./images/blog_006/Sharpening.png"></p>
+<p>The <strong>'S'</strong> on the left is the original RGB represetation of the font. The middle font has been sharpened absolutely where any greyscale pixel is now black. Note how almost all of the segments are connected and would lead to only two centroids being calculated, when six is correct. Finally, the font on the right has been filtered with a value of 150 which provides clean discrimination of the segments without too many of their pixels being eroded (there was a lot of trial-and-error!)</p>
+<h2>Up Next:</h2>
+<h3>Exploratory Data Analysis!</h3>
+<p>Using sample data to determine if the segment-centroid idea is worthwhile.</p>
+ </div>
+</div>
+ </div>
+</body>
+</html>

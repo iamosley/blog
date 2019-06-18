@@ -1,5 +1,64 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>blog</title><link href="https://iamosley.github.io/blog/" rel="alternate"></link><link href="https://iamosley.github.io/blog/feeds/all-en.atom.xml" rel="self"></link><id>https://iamosley.github.io/blog/</id><updated>2019-06-17T14:22:00-04:00</updated><entry><title>Stencil Fonts 1</title><link href="https://iamosley.github.io/blog/blog_005.html" rel="alternate"></link><published>2019-06-17T14:22:00-04:00</published><updated>2019-06-17T14:22:00-04:00</updated><author><name>Ian Mosley</name></author><id>tag:iamosley.github.io,2019-06-17:/blog/blog_005.html</id><summary type="html">&lt;h1&gt;Recognition of Dashed Stencil Fonts&lt;/h1&gt;
+<feed xmlns="http://www.w3.org/2005/Atom"><title>blog</title><link href="https://iamosley.github.io/blog/" rel="alternate"></link><link href="https://iamosley.github.io/blog/feeds/all-en.atom.xml" rel="self"></link><id>https://iamosley.github.io/blog/</id><updated>2019-06-18T09:32:00-04:00</updated><entry><title>Stencil Fonts 2</title><link href="https://iamosley.github.io/blog/blog_006.html" rel="alternate"></link><published>2019-06-18T09:32:00-04:00</published><updated>2019-06-18T09:32:00-04:00</updated><author><name>Ian Mosley</name></author><id>tag:iamosley.github.io,2019-06-18:/blog/blog_006.html</id><summary type="html">&lt;h1&gt;Cleanup Input Files&lt;/h1&gt;
+&lt;p&gt;From the same input file -- converted from a pdf -- create three files for processing:&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;The main inference file that has white/black split at a grey level of 150&lt;/li&gt;
+&lt;li&gt;A file used by the Tesseract OCR utility that is either white (255) or black (0)&lt;/li&gt;
+&lt;li&gt;Sample letters …&lt;/li&gt;&lt;/ol&gt;</summary><content type="html">&lt;h1&gt;Cleanup Input Files&lt;/h1&gt;
+&lt;p&gt;From the same input file -- converted from a pdf -- create three files for processing:&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;The main inference file that has white/black split at a grey level of 150&lt;/li&gt;
+&lt;li&gt;A file used by the Tesseract OCR utility that is either white (255) or black (0)&lt;/li&gt;
+&lt;li&gt;Sample letters for training&lt;/li&gt;
+&lt;/ol&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;imageio&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;PIL&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;Image&lt;/span&gt;
+&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;numpy&lt;/span&gt; &lt;span class="kn"&gt;as&lt;/span&gt; &lt;span class="nn"&gt;np&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;filter_grey_scale&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;in_image&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;out_image&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;grey_split&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;150&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="sd"&gt;&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+&lt;span class="sd"&gt;    Create an &amp;#39;L&amp;#39; band image (greyscale only) with pixels filtered&lt;/span&gt;
+&lt;span class="sd"&gt;    on a value of [grey_split]. Above this value, pixles are white (255)&lt;/span&gt;
+&lt;span class="sd"&gt;    otherwise black (0)&lt;/span&gt;
+&lt;span class="sd"&gt;    &amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+    &lt;span class="n"&gt;img&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;Image&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;open&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;in_image&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;convert&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;L&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="c1"&gt;# instead of &amp;#39;LA&amp;#39;&lt;/span&gt;
+
+    &lt;span class="c1"&gt;# convert the PIL image to an numpy array&lt;/span&gt;
+    &lt;span class="n"&gt;face&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;array&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;img&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="k"&gt;print&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;face&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;shape&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;face&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;dtype&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+    &lt;span class="c1"&gt;# toggle the pixels to black (0) or white (255) depending on the grey split threshold &lt;/span&gt;
+    &lt;span class="n"&gt;face_filtered&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;where&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;face&lt;/span&gt; &lt;span class="o"&gt;&amp;lt;=&lt;/span&gt; &lt;span class="n"&gt;grey_split&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;255&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="n"&gt;face_filtered&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;face_filtered&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;astype&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;uint8&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+    &lt;span class="n"&gt;imageio&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;imwrite&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;out_image&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;face_filtered&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;face_filtered&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="n"&gt;original_image&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;filter_grey_scale&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;./data/source_images/66428.png&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;./data/output/00_66428_for_clipping.png&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="c1"&gt;# default filter of 150 greyscale&lt;/span&gt;
+&lt;span class="n"&gt;_&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;filter_grey_scale&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;./data/source_images/66428.png&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;./data/output/00_66428_for_OCR.png&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;254&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="c1"&gt;# sharp filter for any non-white pixel&lt;/span&gt;
+&lt;span class="n"&gt;_&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;filter_grey_scale&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;./data/source_images/SampleLetters.png&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;./data/output/00_SampleLetters.png&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;254&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="c1"&gt;# harsh filter for letters&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;(2850, 3450) uint8
+(2850, 3450) uint8
+(1008, 792) uint8
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;h2&gt;Why Remove Grey Scale Pixels?&lt;/h2&gt;
+&lt;p&gt;In most applications of OCR, greyscale pixels are significant and aid in determining the shape of the font as dithering is typically implemented when the resolution of the image is poor. However, for this project, a clean, i.e. sharp, delineation between glyphs is important so accurate centroids can be calculated.&lt;/p&gt;
+&lt;p&gt;Consider the image below:
+&lt;img alt="alt_text" src="./images/blog_006/Sharpening.png"&gt;&lt;/p&gt;
+&lt;p&gt;The &lt;strong&gt;'S'&lt;/strong&gt; on the left is the original RGB represetation of the font. The middle font has been sharpened absolutely where any greyscale pixel is now black. Note how almost all of the segments are connected and would lead to only two centroids being calculated, when six is correct. Finally, the font on the right has been filtered with a value of 150 which provides clean discrimination of the segments without too many of their pixels being eroded (there was a lot of trial-and-error!)&lt;/p&gt;
+&lt;h2&gt;Up Next:&lt;/h2&gt;
+&lt;h3&gt;Exploratory Data Analysis!&lt;/h3&gt;
+&lt;p&gt;Using sample data to determine if the segment-centroid idea is worthwhile.&lt;/p&gt;</content><category term="python"></category><category term="jupyter"></category></entry><entry><title>Stencil Fonts 1</title><link href="https://iamosley.github.io/blog/blog_005.html" rel="alternate"></link><published>2019-06-17T14:22:00-04:00</published><updated>2019-06-17T14:22:00-04:00</updated><author><name>Ian Mosley</name></author><id>tag:iamosley.github.io,2019-06-17:/blog/blog_005.html</id><summary type="html">&lt;h1&gt;Recognition of Dashed Stencil Fonts&lt;/h1&gt;
 &lt;p&gt;For many years the ability of computers to optically recognize characters (OCR) has been considered a solved problem. Computer models such as Tesseract and FastText can identify and label characters, words, sentences and paragraphs without difficulty with high reliability and accuracy. Currently these abilities are …&lt;/p&gt;</summary><content type="html">&lt;h1&gt;Recognition of Dashed Stencil Fonts&lt;/h1&gt;
 &lt;p&gt;For many years the ability of computers to optically recognize characters (OCR) has been considered a solved problem. Computer models such as Tesseract and FastText can identify and label characters, words, sentences and paragraphs without difficulty with high reliability and accuracy. Currently these abilities are being extended to other non-Latin alphabets with Tesseract version 4.0. Moreover, it is well within the skill of a non-computer scientist (given enough patience) to train these techniques for new languages given enough example (i.e. training) data.&lt;/p&gt;
 &lt;p&gt;What has not been attempted (or at least published) is the recognition of stencil fonts that regularly appear in land survey plans. Here is an example:&lt;/p&gt;
