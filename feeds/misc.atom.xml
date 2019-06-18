@@ -53,7 +53,7 @@
 
 &lt;h2&gt;Why Remove Grey Scale Pixels?&lt;/h2&gt;
 &lt;p&gt;In most applications of OCR, greyscale pixels are significant and aid in determining the shape of the font as dithering is typically implemented when the resolution of the image is poor. However, for this project, a clean, i.e. sharp, delineation between glyphs is important so accurate centroids can be calculated.&lt;/p&gt;
-&lt;p&gt;Consider the image below:
+&lt;p&gt;Consider this image:
 &lt;img alt="alt_text" src="./images/blog_006/Sharpening.png"&gt;&lt;/p&gt;
 &lt;p&gt;The &lt;strong&gt;'S'&lt;/strong&gt; on the left is the original RGB represetation of the font. The middle font has been sharpened absolutely where any greyscale pixel is now black. Note how almost all of the segments are connected and would lead to only two centroids being calculated, when six is correct. Finally, the font on the right has been filtered with a value of 150 which provides clean discrimination of the segments without too many of their pixels being eroded (there was a lot of trial-and-error!)&lt;/p&gt;
 &lt;h2&gt;Up Next:&lt;/h2&gt;
@@ -77,12 +77,14 @@ A secondary objective is identifying the fonts within the context of the drawing
 &lt;p&gt;&lt;img alt="alt_text" src="./images/blog_005/66428_for_clipping_of_pointers.png"&gt;&lt;/p&gt;
 &lt;p&gt;I've drawn a red box around "Lawrence" for easy identification, and also pointed out other stencil fonts of varying sizes. Note that rotated text recognition is beyond the scope of this project.&lt;/p&gt;
 &lt;h3&gt;How to discribe a dashed font&lt;/h3&gt;
-&lt;p&gt;Here are the main concepts:
-- A file with graphics is called an image
-- An image is a collection of glyphs
-- A single glyph that is part of a recognizeable letter is characterized as a &lt;em&gt;'segment'&lt;/em&gt;
-- During the recognization process, a glyph or segment is labeled
-- A labeled segment has a geometric centroid&lt;/p&gt;
+&lt;p&gt;Here are the main concepts:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;A file with graphics is called an image&lt;/li&gt;
+&lt;li&gt;An image is a collection of glyphs&lt;/li&gt;
+&lt;li&gt;A single glyph that is part of a recognizeable letter is characterized as a &lt;em&gt;'segment'&lt;/em&gt;&lt;/li&gt;
+&lt;li&gt;During the recognization process, a glyph or segment is labeled&lt;/li&gt;
+&lt;li&gt;A labeled segment has a geometric centroid&lt;/li&gt;
+&lt;/ul&gt;
 &lt;p&gt;Let's have a look pictorially:&lt;/p&gt;
 &lt;p&gt;&lt;img alt="alt_text" src="./images/blog_005/Lawrence4.png"&gt;&lt;/p&gt;
 &lt;p&gt;A segment or an entire letter has a 'shape' which is the range of its &lt;em&gt;x&lt;/em&gt; and &lt;em&gt;y&lt;/em&gt; dimensions. For image processing, x is vertical and y is horizontal (however, Tesseract does not follow this practise!).&lt;/p&gt;

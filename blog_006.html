@@ -63,7 +63,7 @@
 
 <h2>Why Remove Grey Scale Pixels?</h2>
 <p>In most applications of OCR, greyscale pixels are significant and aid in determining the shape of the font as dithering is typically implemented when the resolution of the image is poor. However, for this project, a clean, i.e. sharp, delineation between glyphs is important so accurate centroids can be calculated.</p>
-<p>Consider the image below:
+<p>Consider this image:
 <img alt="alt_text" src="./images/blog_006/Sharpening.png"></p>
 <p>The <strong>'S'</strong> on the left is the original RGB represetation of the font. The middle font has been sharpened absolutely where any greyscale pixel is now black. Note how almost all of the segments are connected and would lead to only two centroids being calculated, when six is correct. Finally, the font on the right has been filtered with a value of 150 which provides clean discrimination of the segments without too many of their pixels being eroded (there was a lot of trial-and-error!)</p>
 <h2>Up Next:</h2>

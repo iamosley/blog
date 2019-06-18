@@ -32,12 +32,14 @@ A secondary objective is identifying the fonts within the context of the drawing
 <p><img alt="alt_text" src="./images/blog_005/66428_for_clipping_of_pointers.png"></p>
 <p>I've drawn a red box around "Lawrence" for easy identification, and also pointed out other stencil fonts of varying sizes. Note that rotated text recognition is beyond the scope of this project.</p>
 <h3>How to discribe a dashed font</h3>
-<p>Here are the main concepts:
-- A file with graphics is called an image
-- An image is a collection of glyphs
-- A single glyph that is part of a recognizeable letter is characterized as a <em>'segment'</em>
-- During the recognization process, a glyph or segment is labeled
-- A labeled segment has a geometric centroid</p>
+<p>Here are the main concepts:</p>
+<ul>
+<li>A file with graphics is called an image</li>
+<li>An image is a collection of glyphs</li>
+<li>A single glyph that is part of a recognizeable letter is characterized as a <em>'segment'</em></li>
+<li>During the recognization process, a glyph or segment is labeled</li>
+<li>A labeled segment has a geometric centroid</li>
+</ul>
 <p>Let's have a look pictorially:</p>
 <p><img alt="alt_text" src="./images/blog_005/Lawrence4.png"></p>
 <p>A segment or an entire letter has a 'shape' which is the range of its <em>x</em> and <em>y</em> dimensions. For image processing, x is vertical and y is horizontal (however, Tesseract does not follow this practise!).</p>
