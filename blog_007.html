@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <title>Stencil Fonts 3</title>
+ <!-- Latest compiled and minified CSS -->
+ <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css" integrity="sha384-HSMxcRTRxnN+Bdg0JdbxYKrThecOKuH5zCYotlSAcp1+c8xmyTe9GYg1l9a69psu" crossorigin="anonymous">
+ <div class="container">
+  <h1><a href="https://iamosley.github.io/blog">blog</a></h1>
+ </div>
+</head>
+<body>
+ <div class="container">
+<div class="row">
+ <div class="col-md-8">
+  <h3>Stencil Fonts 3</h3>
+  <label>2019-06-19</label>
+  <h1>Exploratory Data Analysis</h1>
+<p>How distinct are the segments and their associated letters?</p>
+<p>If the relative position of segment centroids combined with their overall arrangement by letter is discernable (just by simple charting and univariate stats), then there should be a reasonable chance that a machine learning technique like SVM may succeed at predicting letters.</p>
+<div class="highlight"><pre><span></span><span class="c1"># handle wildcards for files</span>
+<span class="kn">import</span> <span class="nn">glob</span>
+<span class="c1"># process images</span>
+<span class="kn">from</span> <span class="nn">PIL</span> <span class="kn">import</span> <span class="n">Image</span>
+<span class="kn">from</span> <span class="nn">scipy</span> <span class="kn">import</span> <span class="n">ndimage</span>
+<span class="c1"># some math and linear algebra</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="c1"># data frame processing</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="kn">as</span> <span class="nn">pd</span>
+<span class="c1"># charting</span>
+<span class="kn">import</span> <span class="nn">plotly_express</span> <span class="kn">as</span> <span class="nn">px</span>
+<span class="kn">import</span> <span class="nn">seaborn</span> <span class="kn">as</span> <span class="nn">sns</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="kn">as</span> <span class="nn">plt</span>
+<span class="c1"># clustering</span>
+<span class="kn">from</span> <span class="nn">sklearn.cluster</span> <span class="kn">import</span> <span class="n">KMeans</span>
+<span class="kn">import</span> <span class="nn">sklearn.metrics</span>
+<span class="c1"># ignore warnings for prettier output</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+<span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">cart2pol</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">vertices</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Convert the cartesian vertex coordinates to polar angles (phi)</span>
+<span class="sd">    Args:</span>
+<span class="sd">    - shape, list containing the overall dimensions in pixels [x,y]</span>
+<span class="sd">    - vertices, list of vertexes [[x1,y1], [x2, y2],... [xN, yN]]</span>
+<span class="sd">    Returns:</span>
+<span class="sd">    - list of angles</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="c1"># first, recenter the coordinates</span>
+    <span class="n">vertices</span> <span class="o">=</span> <span class="p">[[</span><span class="n">i</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="n">i</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">/</span> <span class="mi">2</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">vertices</span><span class="p">]</span>
+    <span class="c1"># calculate angle as degrees +/-180</span>
+    <span class="n">phi</span> <span class="o">=</span> <span class="p">[</span><span class="n">math</span><span class="o">.</span><span class="n">degrees</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arctan2</span><span class="p">(</span><span class="n">i</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">i</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">vertices</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">phi</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">get_vertices</span><span class="p">(</span><span class="n">vertices</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">letter</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="s1">&#39;./data/captures/&#39;</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Create a dictionary that stores the centroid and angle for each segment within an letter for</span>
+<span class="sd">    each image. The key is (letter, image) and the attributes are:</span>
+<span class="sd">        - numpy shape of the letter (x, y)</span>
+<span class="sd">        - starting point (y) of the shape within the overall graphic (for reference)</span>
+<span class="sd">        - the vertices (x,y) of each segment centroid that defines a letter; usually between 3 and 9</span>
+<span class="sd">            vertices per letter</span>
+<span class="sd">        - the polar angle of the segment centroid relative to a centered letter </span>
+<span class="sd">    Args:</span>
+<span class="sd">    - vertices, list of vertexes [[x1,y1], [x2, y2],... [xN, yN]]</span>
+<span class="sd">    - image, a graphic image represented as a numpy array</span>
+<span class="sd">    - letter, single character</span>
+<span class="sd">    - start, numer representing the starting position (y coordinate) of the letter within the image</span>
+<span class="sd">        (for reference only)</span>
+<span class="sd">    - path, file path to image</span>
+<span class="sd">    Returns:</span>
+<span class="sd">    - dictionary of vertices and metadata</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">filename</span> <span class="o">=</span> <span class="n">path</span> <span class="o">+</span> <span class="n">image</span> <span class="o">+</span> <span class="s1">&#39;/&#39;</span> <span class="o">+</span> <span class="n">letter</span> <span class="o">+</span> <span class="s1">&#39;_&#39;</span> <span class="o">+</span> <span class="n">start</span> <span class="o">+</span> <span class="s1">&#39;.png&#39;</span>
+
+    <span class="n">img</span> <span class="o">=</span> <span class="n">Image</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+
+    <span class="c1"># convert the PIL image to an numpy array</span>
+    <span class="n">face</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+
+    <span class="c1"># invert the image for labeling</span>
+    <span class="n">face_not</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_not</span><span class="p">(</span><span class="n">face</span><span class="p">)</span>
+
+    <span class="c1"># label each of the adjacent pixels, this defines the segment</span>
+    <span class="n">label_im</span><span class="p">,</span> <span class="n">nb_labels</span> <span class="o">=</span> <span class="n">ndimage</span><span class="o">.</span><span class="n">label</span><span class="p">(</span><span class="n">face_not</span><span class="p">)</span>
+
+    <span class="c1"># determine the centroid of each segment, exclude the background, 0</span>
+    <span class="n">c_o_m</span> <span class="o">=</span> <span class="n">ndimage</span><span class="o">.</span><span class="n">measurements</span><span class="o">.</span><span class="n">center_of_mass</span><span class="p">(</span><span class="n">label_im</span><span class="p">,</span> <span class="n">label_im</span><span class="p">,</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">nb_labels</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
+
+    <span class="c1"># scale the coordinates</span>
+
+    <span class="c1"># calculate aspect ratio of the letter</span>
+    <span class="c1"># this was later found to be uneccesary as SVM does this automatically</span>
+    <span class="k">if</span> <span class="n">face</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">face</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+        <span class="n">ratio_x</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">ratio_y</span> <span class="o">=</span> <span class="n">face</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">/</span> <span class="n">face</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">ratio_x</span> <span class="o">=</span> <span class="n">face</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="n">face</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">ratio_y</span> <span class="o">=</span> <span class="mi">1</span>
+
+    <span class="c1"># SVM suggests whole numbers, so additional scaling</span>
+    <span class="n">ratio_x</span> <span class="o">*=</span> <span class="mi">100</span>
+    <span class="n">ratio_y</span> <span class="o">*=</span> <span class="mi">100</span>
+
+    <span class="c1"># finally, scale by the aspect ratio</span>
+    <span class="n">scale_x</span> <span class="o">=</span> <span class="n">ratio_x</span> <span class="o">/</span> <span class="n">face</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">scale_y</span> <span class="o">=</span> <span class="n">ratio_y</span> <span class="o">/</span> <span class="n">face</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>    
+    <span class="n">scaled_com</span> <span class="o">=</span> <span class="p">[[</span><span class="n">i</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">scale_x</span><span class="p">,</span> <span class="n">i</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">scale_y</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">c_o_m</span><span class="p">]</span>
+
+    <span class="c1"># calculate the polar angle</span>
+    <span class="n">phi</span> <span class="o">=</span> <span class="n">cart2pol</span><span class="p">([</span><span class="n">ratio_x</span><span class="p">,</span> <span class="n">ratio_y</span><span class="p">],</span> <span class="n">scaled_com</span><span class="p">)</span>
+
+    <span class="c1"># create or update the dictionary entry</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">letter</span><span class="p">,</span> <span class="n">image</span><span class="p">)</span> <span class="ow">in</span> <span class="n">vertices</span><span class="p">:</span>
+        <span class="n">vertices</span><span class="p">[(</span><span class="n">letter</span><span class="p">,</span> <span class="n">image</span><span class="p">)][</span><span class="s1">&#39;shape&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">face</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="n">vertices</span><span class="p">[(</span><span class="n">letter</span><span class="p">,</span> <span class="n">image</span><span class="p">)][</span><span class="s1">&#39;start&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">start</span><span class="p">))</span>
+        <span class="n">vertices</span><span class="p">[(</span><span class="n">letter</span><span class="p">,</span> <span class="n">image</span><span class="p">)][</span><span class="s1">&#39;vertices&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">scaled_com</span><span class="p">)</span>
+        <span class="n">vertices</span><span class="p">[(</span><span class="n">letter</span><span class="p">,</span> <span class="n">image</span><span class="p">)][</span><span class="s1">&#39;phi&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">phi</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">vertices</span><span class="p">[(</span><span class="n">letter</span><span class="p">,</span> <span class="n">image</span><span class="p">)]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;shape&#39;</span><span class="p">:</span> <span class="p">[</span><span class="n">face</span><span class="o">.</span><span class="n">shape</span><span class="p">],</span> 
+            <span class="s1">&#39;start&#39;</span><span class="p">:</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">start</span><span class="p">)],</span> 
+            <span class="s1">&#39;vertices&#39;</span><span class="p">:</span> <span class="p">[</span><span class="n">scaled_com</span><span class="p">],</span>
+            <span class="s1">&#39;phi&#39;</span><span class="p">:</span> <span class="p">[</span><span class="n">phi</span><span class="p">]</span>
+        <span class="p">}</span>
+
+    <span class="k">return</span> <span class="n">vertices</span>
+</pre></div>
+
+
+<h3>Process the training data and create the dictionary</h3>
+<p>There were 22 folders containing sample images from several sources. Each image was a single letter. Folders 8, 21 andd 22 were skipped since they have <em>very</em> dirty data.</p>
+<div class="highlight"><pre><span></span><span class="n">vertices</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+<span class="c1"># only process training images that were relatively clean </span>
+<span class="n">images</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">7</span><span class="p">,</span><span class="mi">9</span><span class="p">,</span><span class="mi">10</span><span class="p">,</span><span class="mi">11</span><span class="p">,</span><span class="mi">12</span><span class="p">,</span><span class="mi">13</span><span class="p">,</span><span class="mi">14</span><span class="p">,</span><span class="mi">15</span><span class="p">,</span><span class="mi">16</span><span class="p">,</span><span class="mi">17</span><span class="p">,</span><span class="mi">18</span><span class="p">,</span><span class="mi">19</span><span class="p">,</span><span class="mi">20</span><span class="p">]</span> <span class="c1"># leave out images 8, 21 and 22</span>
+<span class="k">for</span> <span class="n">image</span> <span class="ow">in</span> <span class="n">images</span><span class="p">:</span>
+    <span class="n">image</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">filename</span> <span class="ow">in</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s1">&#39;./data/captures/&#39;</span> <span class="o">+</span> <span class="n">image</span> <span class="o">+</span> <span class="s1">&#39;/?_*.png&#39;</span><span class="p">):</span>
+        <span class="c1"># loop though all the images (directories) and letters (files)</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="n">filename</span><span class="p">[</span><span class="n">filename</span><span class="o">.</span><span class="n">rfind</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">4</span><span class="p">]</span>
+        <span class="n">letter</span> <span class="o">=</span> <span class="n">filename</span><span class="p">[</span><span class="n">filename</span><span class="o">.</span><span class="n">rfind</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span>
+        <span class="c1"># get the vertices (the method will assemble the parameters into a path and filename)</span>
+        <span class="n">vertices</span> <span class="o">=</span> <span class="n">get_vertices</span><span class="p">(</span><span class="n">vertices</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">letter</span><span class="p">,</span> <span class="n">start</span><span class="p">)</span>
+</pre></div>
+
+
+<h3>Each letter doesn't always have a consistent number of segments, so across all images figure out what the average and use that as the 'correct' segment count. Afterwards, if a letter doesn't have the correct segment count, skip it.</h3>
+<p>First, accumulate the total number of faces per letter, and then total vertexes per letter.</p>
+<div class="highlight"><pre><span></span><span class="n">letter_vertices</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+<span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">vertices</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+    <span class="c1"># letter is the first element of the (letter, image) key</span>
+    <span class="n">letter</span> <span class="o">=</span> <span class="n">key</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="c1"># count the total number of vertices for this letter and image</span>
+    <span class="n">total_vertices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">([</span><span class="nb">len</span><span class="p">(</span><span class="n">faces</span><span class="p">)</span> <span class="k">for</span> <span class="n">faces</span> <span class="ow">in</span> <span class="n">vertices</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="s1">&#39;vertices&#39;</span><span class="p">]])</span>
+    <span class="c1"># count the total number of letters</span>
+    <span class="n">total_count</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">vertices</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="s1">&#39;vertices&#39;</span><span class="p">])</span>
+    <span class="c1"># start accumulating the counts that will be used later to calculate the average</span>
+    <span class="k">if</span> <span class="n">letter</span> <span class="ow">in</span> <span class="n">letter_vertices</span><span class="p">:</span>
+        <span class="n">letter_vertices</span><span class="p">[</span><span class="n">letter</span><span class="p">][</span><span class="s1">&#39;total_vertices&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="n">total_vertices</span>
+        <span class="n">letter_vertices</span><span class="p">[</span><span class="n">letter</span><span class="p">][</span><span class="s1">&#39;total_count&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="n">total_count</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">letter_vertices</span><span class="p">[</span><span class="n">letter</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;total_vertices&#39;</span><span class="p">:</span> <span class="n">total_vertices</span><span class="p">,</span> <span class="s1">&#39;total_count&#39;</span><span class="p">:</span> <span class="n">total_count</span><span class="p">}</span>
+</pre></div>
+
+
+<p>Next, calculate the average number of segment per letter and flatten the data for plotting</p>
+<div class="highlight"><pre><span></span><span class="n">flattened_vertices</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="n">letters</span> <span class="o">=</span> <span class="n">vertices</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+<span class="k">for</span> <span class="n">letter</span> <span class="ow">in</span> <span class="n">letters</span><span class="p">:</span>
+    <span class="n">total_vertices</span> <span class="o">=</span> <span class="n">letter_vertices</span><span class="p">[</span><span class="n">letter</span><span class="p">[</span><span class="mi">0</span><span class="p">]][</span><span class="s1">&#39;total_vertices&#39;</span><span class="p">]</span>
+    <span class="n">total_count</span> <span class="o">=</span> <span class="n">letter_vertices</span><span class="p">[</span><span class="n">letter</span><span class="p">[</span><span class="mi">0</span><span class="p">]][</span><span class="s1">&#39;total_count&#39;</span><span class="p">]</span>
+    <span class="n">avg_vertices</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">total_vertices</span> <span class="o">/</span> <span class="n">total_count</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">facets</span> <span class="ow">in</span> <span class="n">vertices</span><span class="p">[</span><span class="n">letter</span><span class="p">][</span><span class="s1">&#39;vertices&#39;</span><span class="p">]:</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">facets</span><span class="p">)</span> <span class="o">!=</span> <span class="n">avg_vertices</span><span class="p">:</span>
+            <span class="c1"># skip facets that don&#39;t have the correct number of vertices</span>
+            <span class="k">continue</span>
+        <span class="k">for</span> <span class="n">vertex</span> <span class="ow">in</span> <span class="n">facets</span><span class="p">:</span>
+            <span class="c1"># add the vertex to the letter</span>
+            <span class="n">flat_vertex</span> <span class="o">=</span> <span class="p">[</span><span class="n">letter</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">+</span> <span class="n">vertex</span>
+            <span class="n">flattened_vertices</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">flat_vertex</span><span class="p">)</span>
+</pre></div>
+
+
+<p>Convert the list to a data frame</p>
+<div class="highlight"><pre><span></span><span class="n">columns</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;Letter&#39;</span><span class="p">,</span> <span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="s1">&#39;y&#39;</span><span class="p">)</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">flattened_vertices</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="n">columns</span><span class="p">)</span>
+</pre></div>
+
+
+<h4>Plot the segment locations by letter (colour)</h4>
+<div class="highlight"><pre><span></span><span class="n">px</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="s2">&quot;y&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;Letter&quot;</span><span class="p">)</span>
+</pre></div>
+
+
+<p><img alt="alt_text" src="./images/blog_007/scatterKmeans.png"></p>
+<p>There are natural groupings of segments, run Kmeans to see how compact they are.</p>
+<h3>For each letter, create Kmeans clusters where N is the number of letter segments</h3>
+<div class="highlight"><pre><span></span><span class="c1"># create a data frame to save the results</span>
+<span class="n">columns</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="s1">&#39;Letter&#39;</span><span class="p">,</span> <span class="s1">&#39;Segment&#39;</span><span class="p">)</span>
+<span class="n">df_clusters</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="n">columns</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">letter</span> <span class="ow">in</span> <span class="n">letter_vertices</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+    <span class="c1"># calculate the number of clusters required (avg_vertices)</span>
+    <span class="n">total_vertices</span> <span class="o">=</span> <span class="n">letter_vertices</span><span class="p">[</span><span class="n">letter</span><span class="p">][</span><span class="s1">&#39;total_vertices&#39;</span><span class="p">]</span>
+    <span class="n">total_count</span> <span class="o">=</span> <span class="n">letter_vertices</span><span class="p">[</span><span class="n">letter</span><span class="p">][</span><span class="s1">&#39;total_count&#39;</span><span class="p">]</span>
+    <span class="n">avg_vertices</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">total_vertices</span> <span class="o">/</span> <span class="n">total_count</span><span class="p">))</span>
+
+    <span class="c1"># select all of the vertices for the current letter, &#39;x&#39; and &#39;y&#39; are the features</span>
+    <span class="n">X</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;Letter&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">letter</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="s1">&#39;y&#39;</span><span class="p">]]</span>
+
+    <span class="c1"># run the model</span>
+    <span class="n">kmeans</span> <span class="o">=</span> <span class="n">KMeans</span><span class="p">(</span><span class="n">n_clusters</span> <span class="o">=</span> <span class="n">avg_vertices</span><span class="p">,</span> <span class="n">random_state</span> <span class="o">=</span> <span class="mi">2019</span><span class="p">)</span>
+    <span class="n">kmeans</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+
+    <span class="c1"># assign the current letter and clustering labels (a nominal segment name)</span>
+    <span class="n">X</span><span class="p">[</span><span class="s1">&#39;Letter&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">letter</span>
+    <span class="n">X</span><span class="p">[</span><span class="s1">&#39;Segment&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">kmeans</span><span class="o">.</span><span class="n">labels_</span>
+    <span class="c1"># append this letter&#39;s results to the master data frame</span>
+    <span class="n">df_clusters</span> <span class="o">=</span> <span class="n">df_clusters</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">sort</span><span class="o">=</span><span class="s1">&#39;True&#39;</span><span class="p">)</span>
+</pre></div>
+
+
+<h4>Calculate the centroid (mean) for each letter-segment, and its standard deviation</h4>
+<div class="highlight"><pre><span></span><span class="n">df_cluster_stats</span> <span class="o">=</span> <span class="n">df_clusters</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s1">&#39;Letter&#39;</span><span class="p">,</span> <span class="s1">&#39;Segment&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">agg</span><span class="p">((</span><span class="s1">&#39;mean&#39;</span><span class="p">,</span> <span class="s1">&#39;std&#39;</span><span class="p">))</span>
+<span class="c1"># Pandas does some crazy things with column names and indexes, so flatten them</span>
+<span class="n">df_cluster_stats</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">col</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">df_cluster_stats</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">values</span><span class="p">]</span>
+<span class="n">df_cluster_stats</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">inplace</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+</pre></div>
+
+
+<h4>Plot the label centroids, controling their error bars with the standard deviation</h4>
+<div class="highlight"><pre><span></span><span class="n">px</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">df_cluster_stats</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="s1">&#39;xmean&#39;</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="s1">&#39;ymean&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;Letter&#39;</span><span class="p">,</span> <span class="n">error_x</span><span class="o">=</span><span class="s1">&#39;xstd&#39;</span><span class="p">,</span> <span class="n">error_y</span><span class="o">=</span><span class="s1">&#39;ystd&#39;</span><span class="p">)</span>
+</pre></div>
+
+
+<p><img alt="alt_text" src="./images/blog_007/barsKmeans.png"></p>
+<p>Note how letters J, O and T have very large error bars. I know 'O's and '0's got mixed together in the manual labeling process. 'J's sometimes had 2, 3, or even 4 segments, so their segments are sloppy. Likewise for 'T'. (<strong>need more letter training data!</strong>)</p>
+<h2>Could there be a 'pattern' related to the polar coordinates of segment centroids?</h2>
+<h3>This would allow a simple conversion from 2-dimensional (x,y) to 1-dimensional (phi) data.</h3>
+<p>Keep things simple.</p>
+<div class="highlight"><pre><span></span><span class="c1"># similar to cartesian coordinates, flatten the data</span>
+<span class="n">flattened_phi</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="n">letters</span> <span class="o">=</span> <span class="n">vertices</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+<span class="k">for</span> <span class="n">letter</span> <span class="ow">in</span> <span class="n">letters</span><span class="p">:</span>
+    <span class="c1"># get the polar angles of the segments within a letter</span>
+    <span class="k">for</span> <span class="n">faces</span> <span class="ow">in</span> <span class="n">vertices</span><span class="p">[</span><span class="n">letter</span><span class="p">][</span><span class="s1">&#39;phi&#39;</span><span class="p">]:</span>
+        <span class="k">for</span> <span class="n">phi</span> <span class="ow">in</span> <span class="n">faces</span><span class="p">:</span>
+            <span class="n">flat_phi</span> <span class="o">=</span> <span class="p">[</span><span class="n">letter</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">+</span> <span class="p">[</span><span class="n">phi</span><span class="p">]</span>
+            <span class="n">flattened_phi</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">flat_phi</span><span class="p">)</span>
+</pre></div>
+
+
+<p>Convert the list into a data frame</p>
+<div class="highlight"><pre><span></span><span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;Letter&#39;</span><span class="p">,</span> <span class="s1">&#39;phi&#39;</span><span class="p">]</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">flattened_phi</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="n">columns</span><span class="p">)</span>
+</pre></div>
+
+
+<h2>More Kmeans</h2>
+<h3>Create clusters of phi for the <b><i>entire</i></b> dataset to determine if phi overall has good selectivity</h3>
+<div class="highlight"><pre><span></span><span class="c1"># data frame to save the results</span>
+<span class="n">df_phi</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">columns</span><span class="p">]</span>
+<span class="c1"># use &#39;phi&#39; as the feature to cluster</span>
+<span class="n">X</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;phi&#39;</span><span class="p">])</span>
+
+<span class="c1"># specify a range of hyperparameters clusters</span>
+<span class="n">min_n</span> <span class="o">=</span> <span class="mi">5</span>
+<span class="n">max_n</span> <span class="o">=</span> <span class="mi">20</span> <span class="c1"># for fun!!!</span>
+
+<span class="c1"># a list for N clusters and Davies-Bouldin score</span>
+<span class="n">n_db</span> <span class="o">=</span> <span class="p">[]</span>
+
+<span class="c1"># iterate through a range of clusters</span>
+<span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">min_n</span><span class="p">,</span> <span class="n">max_n</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+    <span class="c1"># run the model</span>
+    <span class="n">kmeans</span> <span class="o">=</span> <span class="n">KMeans</span><span class="p">(</span><span class="n">n_clusters</span> <span class="o">=</span> <span class="n">n</span><span class="p">,</span> <span class="n">random_state</span> <span class="o">=</span> <span class="mi">2019</span><span class="p">)</span>
+    <span class="n">kmeans</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+    <span class="n">n_db</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sklearn</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">davies_bouldin_score</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">kmeans</span><span class="o">.</span><span class="n">labels_</span><span class="p">))</span>
+    <span class="n">label_name</span> <span class="o">=</span> <span class="s1">&#39;Label_&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+    <span class="n">df_phi</span><span class="p">[</span><span class="n">label_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">kmeans</span><span class="o">.</span><span class="n">labels_</span>
+
+<span class="c1"># which N has the smallest DB score?</span>
+<span class="n">target_n</span> <span class="o">=</span> <span class="n">n_db</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="n">n_db</span><span class="p">))</span>
+<span class="k">print</span><span class="p">(</span><span class="s1">&#39;DB scores are: &#39;</span><span class="p">)</span>
+<span class="n">display</span><span class="p">(</span><span class="n">n_db</span><span class="p">)</span>
+<span class="k">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Target score is: {target_n}, {round(n_db[target_n], 3)}, which is the {target_n + min_n} cluster solution&#39;</span><span class="p">)</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>DB scores are:
+
+
+
+[0.37389688504980356,
+ 0.34459546702845856,
+ 0.3494102793704596,
+ 0.3596633529059681,
+ 0.3888715699619895,
+ 0.4487928904676979,
+ 0.4604162319657635,
+ 0.4750606693092221,
+ 0.43957059325763975,
+ 0.4461595729494598,
+ 0.42431169282507997,
+ 0.4081772746576713,
+ 0.4032682916674488,
+ 0.40336476286208306,
+ 0.4126858249693549,
+ 0.42235931793326975]
+
+
+Target score is: 1, 0.345, which is the 6 cluster solution
+</pre></div>
+
+
+<h4>Despite the 'six' cluster solution having the minimum Davies-Bouldin score, visual inspection suggests 17 clusters is most discriminating</h4>
+<p><em>Note that magnitude has no meaning in this context, just angle is significant.</em></p>
+<div class="highlight"><pre><span></span><span class="n">df_phi</span><span class="p">[</span><span class="s1">&#39;Label_17&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df_phi</span><span class="p">[</span><span class="s1">&#39;Label_17&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>
+<span class="n">px</span><span class="o">.</span><span class="n">scatter_polar</span><span class="p">(</span>
+    <span class="n">df_phi</span><span class="p">,</span>
+    <span class="n">theta</span><span class="o">=</span><span class="s2">&quot;phi&quot;</span><span class="p">,</span> 
+    <span class="n">color</span><span class="o">=</span><span class="s1">&#39;Label_17&#39;</span><span class="p">,</span>
+    <span class="n">color_discrete_sequence</span><span class="o">=</span><span class="n">px</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">qualitative</span><span class="o">.</span><span class="n">Light24</span>
+<span class="p">)</span>
+</pre></div>
+
+
+<p><img alt="alt_text" src="./images/blog_007/phi.png"></p>
+<h3>Further feature engineering required</h3>
+<p>When examining the polar plot, there were clusters that were outliers and therefore noise:</p>
+<ul>
+<li>5, 13 and 15</li>
+</ul>
+<p>And several clusters that needed to be combined due to close proximity:</p>
+<ul>
+<li>1 and 16</li>
+<li>3 and 14</li>
+<li>4 and 12</li>
+</ul>
+<div class="highlight"><pre><span></span><span class="c1"># remove noisy clusters</span>
+<span class="n">noise</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;5&#39;</span><span class="p">,</span> <span class="s1">&#39;13&#39;</span><span class="p">,</span> <span class="s1">&#39;15&#39;</span><span class="p">]</span>
+<span class="n">df_phi_signal</span> <span class="o">=</span> <span class="n">df_phi</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="o">~</span><span class="n">df_phi</span><span class="p">[</span><span class="s1">&#39;Label_17&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">noise</span><span class="p">),</span> <span class="p">[</span><span class="s1">&#39;phi&#39;</span><span class="p">,</span> <span class="s1">&#39;Letter&#39;</span><span class="p">,</span> <span class="s1">&#39;Label_17&#39;</span><span class="p">]]</span>
+
+<span class="c1"># combine similar clusters</span>
+<span class="n">df_phi_signal</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">df_phi_signal</span><span class="p">[</span><span class="s1">&#39;Label_17&#39;</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;16&#39;</span><span class="p">,</span> <span class="s1">&#39;Label_17&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;1&#39;</span>
+<span class="n">df_phi_signal</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">df_phi_signal</span><span class="p">[</span><span class="s1">&#39;Label_17&#39;</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;14&#39;</span><span class="p">,</span> <span class="s1">&#39;Label_17&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;3&#39;</span>
+<span class="n">df_phi_signal</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">df_phi_signal</span><span class="p">[</span><span class="s1">&#39;Label_17&#39;</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;12&#39;</span><span class="p">,</span> <span class="s1">&#39;Label_17&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;4&#39;</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="n">px</span><span class="o">.</span><span class="n">scatter_polar</span><span class="p">(</span>
+    <span class="n">df_phi_signal</span><span class="p">,</span>
+    <span class="n">theta</span><span class="o">=</span><span class="s2">&quot;phi&quot;</span><span class="p">,</span> 
+    <span class="n">color</span><span class="o">=</span><span class="s1">&#39;Label_17&#39;</span><span class="p">,</span>
+    <span class="n">color_discrete_sequence</span><span class="o">=</span><span class="n">px</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">qualitative</span><span class="o">.</span><span class="n">Safe</span>
+<span class="p">)</span>
+</pre></div>
+
+
+<p><img alt="alt_text" src="./images/blog_007/phiClean.png"></p>
+<p>That looks a lot cleaner. Arguablly, cluster 9 should be removed or merged with cluster 3; likewise cluster 10 should be removed outright (I'll keep it to aid future discussion).</p>
+<h3>How selective are clusters by letter?</h3>
+<h4>Are the phi clusters trully representative of letters? Can specific letters be characterized by an exclusive list of clusters?</h4>
+<p>Create a heatmap of letters by clusters</p>
+<div class="highlight"><pre><span></span><span class="c1"># count the number of cluster occurences by letter</span>
+<span class="n">df_phi_stats</span> <span class="o">=</span> <span class="n">df_phi_signal</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s1">&#39;Letter&#39;</span><span class="p">,</span> <span class="s1">&#39;Label_17&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">count</span><span class="p">()</span>
+
+<span class="c1"># fix the weird naming</span>
+<span class="n">df_phi_stats</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;phi_count&#39;</span><span class="p">]</span>
+<span class="n">df_phi_stats</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">inplace</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+<span class="c1"># pivot the dataframe into Letter by Cluster (Label_17)</span>
+<span class="n">df_phi_pivot_count</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">pivot_table</span><span class="p">(</span><span class="n">df_phi_stats</span><span class="p">,</span> <span class="n">values</span><span class="o">=</span><span class="s1">&#39;phi_count&#39;</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="s1">&#39;Letter&#39;</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="s1">&#39;Label_17&#39;</span><span class="p">)</span>
+
+<span class="c1"># create the heatmap, remove cells &lt;= 5 to make the distribution clearer</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">))</span>
+<span class="n">sns</span><span class="o">.</span><span class="n">heatmap</span><span class="p">(</span><span class="n">df_phi_pivot_count</span><span class="p">[</span><span class="n">df_phi_pivot_count</span> <span class="o">&gt;</span> <span class="mi">5</span><span class="p">],</span> <span class="n">annot</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
+</pre></div>
+
+
+<p><img alt="png" src="./images/blog_007/blog_007_32_1.png"></p>
+<p>The heatmap is revealing. Several points of note:</p>
+<ul>
+<li>Cluster 10 only impacts two letters, '1' and 'E'. For the latter it is only present in half the cases</li>
+<li>Letter 'A' is uniquely defined by the clusters 11, 4 and 8</li>
+<li>'O' (or maybe '0') is a real mess with most of the clusters represented with varying counts</li>
+<li>'T' is well defined: four clusters with comparable counts</li>
+<li>'2' and '3' are very similar, will be dificult to discriminate</li>
+</ul>
+<p>Thinking of any further cluster drops or merging:</p>
+<ol>
+<li>Cluster 10 can be safely removed since it doesn't impact the distinct identification of a letter</li>
+<li>While cluster 9 doesn't seem significant, it does uniquely identify 'S' from '3' and '2'</li>
+</ol>
+<h2>Up next:</h2>
+<h3>Letter classification with SVM</h3>
+<p>Investigating whether SVM can be applied to the problem of successfully labeling letters via the poly coordinates of their segments.</p>
+ </div>
+</div>
+ </div>
+</body>
+</html>
