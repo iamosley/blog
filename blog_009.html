@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <title>Stencil Fonts 5</title>
+ <!-- Latest compiled and minified CSS -->
+ <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css" integrity="sha384-HSMxcRTRxnN+Bdg0JdbxYKrThecOKuH5zCYotlSAcp1+c8xmyTe9GYg1l9a69psu" crossorigin="anonymous">
+ <div class="container">
+  <h1><a href="https://iamosley.github.io/blog">blog</a></h1>
+ </div>
+</head>
+<body>
+ <div class="container">
+<div class="row">
+ <div class="col-md-8">
+  <h3>Stencil Fonts 5</h3>
+  <label>2019-06-20</label>
+  <h1>OCR Known Text</h1>
+<p>Remove recognizeable text from image using Tesseract OCR</p>
+<div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">PIL</span> <span class="kn">import</span> <span class="n">Image</span>
+<span class="kn">import</span> <span class="nn">pytesseract</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">imageio</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="c1"># confirm the version, should be 4.x</span>
+<span class="n">pytesseract</span><span class="o">.</span><span class="n">get_tesseract_version</span><span class="p">()</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>LooseVersion (&#39;4.0.0&#39;)
+</pre></div>
+
+
+<h4>Several files involved in the process, let's review</h4>
+<div class="highlight"><pre><span></span><span class="c1"># The original image, all greys sharpened to black, for input</span>
+<span class="n">source_file</span> <span class="o">=</span> <span class="s1">&#39;./data/output/00_66428_for_OCR.png&#39;</span>
+<span class="c1"># The original image sharpened by &lt;= 150 greyscale</span>
+<span class="n">grey_150_file</span> <span class="o">=</span> <span class="s1">&#39;./data/output/00_66428_for_clipping.png&#39;</span>
+<span class="c1"># OCR text contained in the file</span>
+<span class="n">text_file</span> <span class="o">=</span> <span class="s1">&#39;./data/output/03_66428_for_OCR.txt&#39;</span>
+<span class="c1"># bounding box coordinate text file</span>
+<span class="n">b_box_text_file</span> <span class="o">=</span> <span class="s1">&#39;./data/output/03_66428_b_box.txt&#39;</span>
+<span class="c1"># sliced grey file that has clipping extraced</span>
+<span class="n">sliced_grey_file</span> <span class="o">=</span> <span class="s1">&#39;./data/output/03_66428_grey_sliced.png&#39;</span>
+</pre></div>
+
+
+<h3>Process the file using Tesseract and extract the text</h3>
+<p>Note that the current and future version do not accept black- nor white-listed <a href="https://github.com/tesseract-ocr/tesseract/issues/751#issuecomment-293906217">characters</a>. This makes processing <em><strong>difficult</strong></em> as the engine attempts to process all glyphs, not just letters and numbers</p>
+<div class="highlight"><pre><span></span><span class="c1"># all_text = pytesseract.image_to_string(Image.open(source_file), config=&quot;-c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ&quot;)</span>
+<span class="n">all_text</span> <span class="o">=</span> <span class="n">pytesseract</span><span class="o">.</span><span class="n">image_to_string</span><span class="p">(</span><span class="n">Image</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">source_file</span><span class="p">))</span>
+<span class="c1"># open a file and write the contents</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">text_file</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fpo</span><span class="p">:</span>
+    <span class="n">fpo</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">all_text</span><span class="p">)</span>
+</pre></div>
+
+
+<h3>Likewise, save the bounding boxes for the recognized text</h3>
+<p>Unfortunately, the bounding boxes are not exact (training is required for the specific font being captured, even if the available training sets due a great job, the boxes will be fuzzy)</p>
+<div class="highlight"><pre><span></span><span class="n">b_boxes</span> <span class="o">=</span> <span class="n">pytesseract</span><span class="o">.</span><span class="n">image_to_boxes</span><span class="p">(</span><span class="n">Image</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">source_file</span><span class="p">))</span>
+<span class="c1"># open a file and write the contents</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">b_box_text_file</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fpo</span><span class="p">:</span>
+    <span class="n">fpo</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">b_boxes</span><span class="p">)</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="c1"># helper function to convert Tesseract coordinates to image coords</span>
+<span class="k">def</span> <span class="nf">b_box_text_to_slices</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">box_text</span><span class="p">,</span> <span class="n">buffer_size</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">y_scale</span><span class="o">=</span><span class="mf">10.0</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; Function to convert Tesseract coordinates to image coordinates as numpy slices. </span>
+<span class="sd">    (Tesseract and PIL don&#39;t use the same coordinate conventions)</span>
+<span class="sd">    Due to the fuzzy nature of the bounding boxes, buffer and scale the boxes.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">all_slices</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="c1"># X,Y are Tesseract coordinates</span>
+    <span class="c1"># x,y are PIL-numpy coordinates</span>
+    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">b_boxes</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">):</span>
+        <span class="n">line_list</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">)</span>
+        <span class="n">X1</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">line_list</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">Y1</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">line_list</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+        <span class="n">X2</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">line_list</span><span class="p">[</span><span class="mi">3</span><span class="p">])</span>
+        <span class="n">Y2</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">line_list</span><span class="p">[</span><span class="mi">4</span><span class="p">])</span>
+        <span class="n">x1</span> <span class="o">=</span> <span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">Y2</span>
+        <span class="n">x2</span> <span class="o">=</span> <span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">Y1</span>
+        <span class="n">y1</span> <span class="o">=</span> <span class="n">X1</span>
+        <span class="n">y2</span> <span class="o">=</span> <span class="n">X2</span>
+        <span class="n">x_buffer</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">rint</span><span class="p">((</span><span class="n">x2</span> <span class="o">-</span> <span class="n">x1</span><span class="p">)</span> <span class="o">*</span> <span class="n">buffer_size</span><span class="p">))</span>
+        <span class="n">y_buffer</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">rint</span><span class="p">((</span><span class="n">y2</span> <span class="o">-</span> <span class="n">y1</span><span class="p">)</span> <span class="o">*</span> <span class="n">buffer_size</span> <span class="o">*</span> <span class="n">y_scale</span><span class="p">))</span>
+        <span class="n">x1</span> <span class="o">-=</span> <span class="n">x_buffer</span>
+        <span class="n">x2</span> <span class="o">+=</span> <span class="n">x_buffer</span>
+        <span class="n">y1</span> <span class="o">-=</span> <span class="n">y_buffer</span>
+        <span class="n">y2</span> <span class="o">+=</span> <span class="n">y_buffer</span>
+        <span class="n">all_slices</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">s_</span><span class="p">[</span><span class="n">x1</span><span class="p">:</span><span class="n">x2</span><span class="p">,</span> <span class="n">y1</span><span class="p">:</span><span class="n">y2</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">all_slices</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="n">source_img</span> <span class="o">=</span> <span class="n">Image</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">source_file</span><span class="p">)</span>
+<span class="n">source_image</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">source_img</span><span class="p">)</span>
+<span class="n">slices</span> <span class="o">=</span> <span class="n">b_box_text_to_slices</span><span class="p">(</span><span class="n">source_image</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">b_boxes</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">)</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="c1"># open the grey 150 image, the original file for EDA and SVM modeling</span>
+<span class="n">grey_img</span> <span class="o">=</span> <span class="n">Image</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">grey_150_file</span><span class="p">)</span>
+<span class="n">grey_image</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">grey_img</span><span class="p">)</span>
+
+<span class="c1"># for all of the text box slices, blank them out with white (greyscale = 255)</span>
+<span class="k">for</span> <span class="n">a_slice</span> <span class="ow">in</span> <span class="n">slices</span><span class="p">[:</span><span class="o">-</span><span class="mi">2</span><span class="p">]:</span>
+    <span class="n">grey_image</span><span class="p">[</span><span class="n">a_slice</span><span class="p">]</span> <span class="o">=</span> <span class="mi">255</span>
+
+<span class="c1"># save the modified grey image</span>
+<span class="n">imageio</span><span class="o">.</span><span class="n">imwrite</span><span class="p">(</span><span class="n">sliced_grey_file</span><span class="p">,</span> <span class="n">grey_image</span><span class="p">)</span>
+</pre></div>
+
+
+<h2>The output file has a significant amount of text removed, both horinzontal and vertical.</h2>
+<p>Even some of the stencil fonts have been 'recognized', but those are a false-positives as individual glyphs within the letter that have been labeled as punctuation marks. Tesseract did fulfill its purpose of removing unnecessary glyphs that could be recognied by other OCR processes and leave behind large glyphs and stencil fonts.</p>
+<p><img alt="alt_text" src="./images/blog_009/03_66428_grey_sliced.png"></p>
+<h2>Next Post:</h2>
+<h3>Removing large glyphs representing drawing elements.</h3>
+<p>This relies on raw glyph dimensions and image processing.</p>
+ </div>
+</div>
+ </div>
+</body>
+</html>
