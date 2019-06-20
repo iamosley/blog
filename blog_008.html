@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <title>Stencil Fonts 4</title>
+ <!-- Latest compiled and minified CSS -->
+ <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css" integrity="sha384-HSMxcRTRxnN+Bdg0JdbxYKrThecOKuH5zCYotlSAcp1+c8xmyTe9GYg1l9a69psu" crossorigin="anonymous">
+ <div class="container">
+  <h1><a href="https://iamosley.github.io/blog">blog</a></h1>
+ </div>
+</head>
+<body>
+ <div class="container">
+<div class="row">
+ <div class="col-md-8">
+  <h3>Stencil Fonts 4</h3>
+  <label>2019-06-20</label>
+  <h1>Using segment angles as a feature, model using SVC</h1>
+<p>EDA revealed the distinct characterizing of letters by polar angle of their segments; use SVC to create a model to predict letters</p>
+<div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">glob</span>
+<span class="kn">from</span> <span class="nn">PIL</span> <span class="kn">import</span> <span class="n">Image</span>
+<span class="kn">from</span> <span class="nn">scipy</span> <span class="kn">import</span> <span class="n">ndimage</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="kn">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">pickle</span>
+<span class="kn">from</span> <span class="nn">sklearn</span> <span class="kn">import</span> <span class="n">svm</span>
+<span class="kn">from</span> <span class="nn">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">train_test_split</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">cart2pol_sorted_y</span><span class="p">(</span><span class="n">vertices</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Convert the cartesian coordinates (vertices) to polar angles (phi).</span>
+<span class="sd">    This method assumes that the vertices are sorted on the Y-axis&#39;&#39;&#39;</span>
+    <span class="n">x_min</span> <span class="o">=</span> <span class="n">vertices</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+    <span class="n">y_min</span> <span class="o">=</span> <span class="n">vertices</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">x_max</span> <span class="o">=</span> <span class="n">vertices</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+    <span class="n">y_max</span> <span class="o">=</span> <span class="n">vertices</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">x_avg</span> <span class="o">=</span> <span class="p">(</span><span class="n">x_min</span> <span class="o">+</span> <span class="n">x_max</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
+    <span class="n">y_avg</span> <span class="o">=</span> <span class="p">(</span><span class="n">y_min</span> <span class="o">+</span> <span class="n">y_max</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
+    <span class="c1"># recenter the centroids</span>
+    <span class="n">vertices</span> <span class="o">=</span> <span class="p">[[</span><span class="n">i</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">x_avg</span><span class="p">,</span> <span class="n">i</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">y_avg</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">vertices</span><span class="p">]</span>
+    <span class="c1"># calculate angle as degrees +/-180</span>
+    <span class="n">phi</span> <span class="o">=</span> <span class="p">[</span><span class="n">math</span><span class="o">.</span><span class="n">degrees</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arctan2</span><span class="p">(</span><span class="n">i</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">i</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">vertices</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">phi</span><span class="p">))</span>
+</pre></div>
+
+
+<p>This version of <em>get_vertices</em> is almost identifcal to the function used during EDA, but has the aspect ratio and coordinate scaling calculations removed as they hindered the performance of SVC.</p>
+<div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">get_vertices</span><span class="p">(</span><span class="n">vertices</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">letter</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="s1">&#39;./data/captures/&#39;</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Create a dictionary that stores the centroid and angle for each segment within an letter for</span>
+<span class="sd">    each image. The key is (letter, image) and the attributes are:</span>
+<span class="sd">        - numpy shape of the letter (x, y)</span>
+<span class="sd">        - starting point (y) of the shape within the overall graphic (for reference)</span>
+<span class="sd">        - the vertices (x,y) of each segment centroid that defines a letter; usually between 3 and 9</span>
+<span class="sd">            vertices per letter</span>
+<span class="sd">        - the polar angle of the segment centroid relative to a centered letter </span>
+<span class="sd">    Args:</span>
+<span class="sd">    - vertices, list of vertexes [[x1,y1], [x2, y2],... [xN, yN]]</span>
+<span class="sd">    - image, a graphic image represented as a numpy array</span>
+<span class="sd">    - letter, single character</span>
+<span class="sd">    - start, numer representing the starting position (y coordinate) of the letter within the image</span>
+<span class="sd">        (for reference only)</span>
+<span class="sd">    - path, file path to image</span>
+<span class="sd">    Returns:</span>
+<span class="sd">    - dictionary of vertices and metadata</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">filename</span> <span class="o">=</span> <span class="n">path</span> <span class="o">+</span> <span class="n">image</span> <span class="o">+</span> <span class="s1">&#39;/&#39;</span> <span class="o">+</span> <span class="n">letter</span> <span class="o">+</span> <span class="s1">&#39;_&#39;</span> <span class="o">+</span> <span class="n">start</span> <span class="o">+</span> <span class="s1">&#39;.png&#39;</span>
+
+    <span class="n">img</span> <span class="o">=</span> <span class="n">Image</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+
+    <span class="c1"># convert the PIL image to an numpy array</span>
+    <span class="n">face</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+
+    <span class="c1"># invert the image for labeling</span>
+    <span class="n">face_not</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_not</span><span class="p">(</span><span class="n">face</span><span class="p">)</span>
+
+    <span class="c1"># label each of the adjacent pixels, creating segments</span>
+    <span class="n">label_im</span><span class="p">,</span> <span class="n">nb_labels</span> <span class="o">=</span> <span class="n">ndimage</span><span class="o">.</span><span class="n">label</span><span class="p">(</span><span class="n">face_not</span><span class="p">)</span>
+
+    <span class="c1"># determine the centroid of each segment</span>
+    <span class="n">c_o_m</span> <span class="o">=</span> <span class="n">ndimage</span><span class="o">.</span><span class="n">measurements</span><span class="o">.</span><span class="n">center_of_mass</span><span class="p">(</span><span class="n">label_im</span><span class="p">,</span> <span class="n">label_im</span><span class="p">,</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">nb_labels</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
+    <span class="n">com_stack</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">c_o_m</span><span class="p">)</span>
+    <span class="c1"># sort the array by the second column (phi)</span>
+    <span class="n">sorted_com</span> <span class="o">=</span> <span class="n">com_stack</span><span class="p">[</span><span class="n">com_stack</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">argsort</span><span class="p">()]</span>
+
+    <span class="c1"># calculate the angle</span>
+    <span class="n">phi</span> <span class="o">=</span> <span class="n">cart2pol_sorted_y</span><span class="p">(</span><span class="n">sorted_com</span><span class="p">)</span>
+
+    <span class="c1"># create or update the dictionary entry</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">letter</span><span class="p">,</span> <span class="n">image</span><span class="p">)</span> <span class="ow">in</span> <span class="n">vertices</span><span class="p">:</span>
+        <span class="n">vertices</span><span class="p">[(</span><span class="n">letter</span><span class="p">,</span> <span class="n">image</span><span class="p">)][</span><span class="s1">&#39;shape&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">face</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="n">vertices</span><span class="p">[(</span><span class="n">letter</span><span class="p">,</span> <span class="n">image</span><span class="p">)][</span><span class="s1">&#39;start&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">start</span><span class="p">))</span>
+        <span class="n">vertices</span><span class="p">[(</span><span class="n">letter</span><span class="p">,</span> <span class="n">image</span><span class="p">)][</span><span class="s1">&#39;vertices&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">c_o_m</span><span class="p">)</span>
+        <span class="n">vertices</span><span class="p">[(</span><span class="n">letter</span><span class="p">,</span> <span class="n">image</span><span class="p">)][</span><span class="s1">&#39;phi&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">phi</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">vertices</span><span class="p">[(</span><span class="n">letter</span><span class="p">,</span> <span class="n">image</span><span class="p">)]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;shape&#39;</span><span class="p">:</span> <span class="p">[</span><span class="n">face</span><span class="o">.</span><span class="n">shape</span><span class="p">],</span> 
+            <span class="s1">&#39;start&#39;</span><span class="p">:</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">start</span><span class="p">)],</span> 
+            <span class="s1">&#39;vertices&#39;</span><span class="p">:</span> <span class="p">[</span><span class="n">c_o_m</span><span class="p">],</span>
+            <span class="s1">&#39;phi&#39;</span><span class="p">:</span> <span class="p">[</span><span class="n">phi</span><span class="p">]</span>
+        <span class="p">}</span>
+
+    <span class="k">return</span> <span class="n">vertices</span>
+</pre></div>
+
+
+<h3>Process the training data and create the dictionary. Save to disk</h3>
+<div class="highlight"><pre><span></span><span class="n">vertices</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+<span class="c1"># only process training images that were relatively clean </span>
+<span class="n">images</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">7</span><span class="p">,</span><span class="mi">9</span><span class="p">,</span><span class="mi">10</span><span class="p">,</span><span class="mi">11</span><span class="p">,</span><span class="mi">12</span><span class="p">,</span><span class="mi">13</span><span class="p">,</span><span class="mi">14</span><span class="p">,</span><span class="mi">15</span><span class="p">,</span><span class="mi">16</span><span class="p">,</span><span class="mi">17</span><span class="p">,</span><span class="mi">18</span><span class="p">,</span><span class="mi">19</span><span class="p">,</span><span class="mi">20</span><span class="p">]</span> <span class="c1"># leave out images 8, 21 and 22</span>
+<span class="k">for</span> <span class="n">image</span> <span class="ow">in</span> <span class="n">images</span><span class="p">:</span>
+    <span class="c1"># make the number into a string</span>
+    <span class="n">image</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">filename</span> <span class="ow">in</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s1">&#39;./data/captures/&#39;</span> <span class="o">+</span> <span class="n">image</span> <span class="o">+</span> <span class="s1">&#39;/?_*.png&#39;</span><span class="p">):</span>
+        <span class="c1"># loop though all the images (directories) and letters (files)</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="n">filename</span><span class="p">[</span><span class="n">filename</span><span class="o">.</span><span class="n">rfind</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">4</span><span class="p">]</span>
+        <span class="n">letter</span> <span class="o">=</span> <span class="n">filename</span><span class="p">[</span><span class="n">filename</span><span class="o">.</span><span class="n">rfind</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span>
+        <span class="c1"># get the vertices (the method will assemble the parameters into a path and filename)</span>
+        <span class="n">vertices</span> <span class="o">=</span> <span class="n">get_vertices</span><span class="p">(</span><span class="n">vertices</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">letter</span><span class="p">,</span> <span class="n">start</span><span class="p">)</span>
+</pre></div>
+
+
+<h3>Save the vertices dictionary for use later</h3>
+<div class="highlight"><pre><span></span><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;./data/output/02_vertices.pickle&quot;</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">output_file</span><span class="p">:</span>
+    <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">vertices</span><span class="p">,</span> <span class="n">output_file</span><span class="p">)</span>
+</pre></div>
+
+
+<h4>Flatten the Phi feature for Pandas processing</h4>
+<div class="highlight"><pre><span></span><span class="n">flattened_phi</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="n">letters</span> <span class="o">=</span> <span class="n">vertices</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+<span class="k">for</span> <span class="n">letter</span> <span class="ow">in</span> <span class="n">letters</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">vertices</span><span class="p">[</span><span class="n">letter</span><span class="p">][</span><span class="s1">&#39;start&#39;</span><span class="p">])):</span>
+        <span class="k">for</span> <span class="n">phi</span> <span class="ow">in</span> <span class="n">vertices</span><span class="p">[</span><span class="n">letter</span><span class="p">][</span><span class="s1">&#39;phi&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">]:</span>
+            <span class="n">flat_phi</span> <span class="o">=</span> <span class="p">[</span><span class="n">letter</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">+</span> <span class="p">[</span><span class="n">letter</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span> <span class="o">+</span> <span class="p">[</span><span class="n">vertices</span><span class="p">[</span><span class="n">letter</span><span class="p">][</span><span class="s1">&#39;start&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">]]</span> <span class="o">+</span> <span class="p">[</span><span class="n">phi</span><span class="p">]</span>
+            <span class="n">flattened_phi</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">flat_phi</span><span class="p">)</span>
+
+<span class="c1"># add some descriptive column names</span>
+<span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;Letter&#39;</span><span class="p">,</span> <span class="s1">&#39;Image&#39;</span><span class="p">,</span> <span class="s1">&#39;Start&#39;</span><span class="p">,</span> <span class="s1">&#39;phi&#39;</span><span class="p">]</span>
+<span class="n">df_pk_phi</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">flattened_phi</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="n">columns</span><span class="p">)</span>
+</pre></div>
+
+
+<h4>Pivot the data into a columnar format for SVM processing</h4>
+<div class="highlight"><pre><span></span><span class="n">df_pk_phi</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;Letter == &#39;0&#39; &amp; Image == &#39;10&#39; &amp; Start == &#39;205&#39;&quot;</span><span class="p">)</span>
+</pre></div>
+
+
+<p>The data looked like:</p>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Letter</th>
+      <th>Image</th>
+      <th>Start</th>
+      <th>phi</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>756</th>
+      <td>0</td>
+      <td>10</td>
+      <td>205</td>
+      <td>-179.738910</td>
+    </tr>
+    <tr>
+      <th>757</th>
+      <td>0</td>
+      <td>10</td>
+      <td>205</td>
+      <td>-91.270565</td>
+    </tr>
+    <tr>
+      <th>758</th>
+      <td>0</td>
+      <td>10</td>
+      <td>205</td>
+      <td>-0.072804</td>
+    </tr>
+    <tr>
+      <th>759</th>
+      <td>0</td>
+      <td>10</td>
+      <td>205</td>
+      <td>91.270565</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="highlight"><pre><span></span><span class="c1"># Using the dense rank method to create columns names during pivoting </span>
+<span class="n">df_pk_phi</span><span class="p">[</span><span class="s1">&#39;rank_count&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df_pk_phi</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s1">&#39;Letter&#39;</span><span class="p">,</span> <span class="s1">&#39;Image&#39;</span><span class="p">,</span> <span class="s1">&#39;Start&#39;</span><span class="p">])[</span><span class="s1">&#39;phi&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">rank</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s1">&#39;dense&#39;</span><span class="p">,</span> <span class="n">ascending</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+<span class="n">df_pk_phi_pivot</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">pivot_table</span><span class="p">(</span><span class="n">df_pk_phi</span><span class="p">,</span> <span class="n">values</span><span class="o">=</span><span class="s1">&#39;phi&#39;</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;Letter&#39;</span><span class="p">,</span> <span class="s1">&#39;Image&#39;</span><span class="p">,</span> <span class="s1">&#39;Start&#39;</span><span class="p">],</span> <span class="n">columns</span><span class="o">=</span><span class="s1">&#39;rank_count&#39;</span><span class="p">)</span>
+<span class="n">df_pk_phi_pivot</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;s1&#39;</span><span class="p">,</span> <span class="s1">&#39;s2&#39;</span><span class="p">,</span> <span class="s1">&#39;s3&#39;</span><span class="p">,</span> <span class="s1">&#39;s4&#39;</span><span class="p">,</span> <span class="s1">&#39;s5&#39;</span><span class="p">,</span> <span class="s1">&#39;s6&#39;</span><span class="p">,</span> <span class="s1">&#39;s7&#39;</span><span class="p">,</span> <span class="s1">&#39;s8&#39;</span><span class="p">,</span> <span class="s1">&#39;s9&#39;</span><span class="p">]</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="n">df_pk_phi_pivot</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;Letter == &#39;0&#39; &amp; Image == &#39;10&#39; &amp; Start == &#39;205&#39;&quot;</span><span class="p">)</span>
+</pre></div>
+
+
+<p>And in its pivoted form, looks like:</p>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th></th>
+      <th></th>
+      <th>s1</th>
+      <th>s2</th>
+      <th>s3</th>
+      <th>s4</th>
+      <th>s5</th>
+      <th>s6</th>
+      <th>s7</th>
+      <th>s8</th>
+      <th>s9</th>
+    </tr>
+    <tr>
+      <th>Letter</th>
+      <th>Image</th>
+      <th>Start</th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <th>10</th>
+      <th>205</th>
+      <td>-179.73891</td>
+      <td>-91.270565</td>
+      <td>-0.072804</td>
+      <td>91.270565</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<p>Note how the angles are explicitly sorted ascending from left to right, 's1' to 's9' (if present)</p>
+<h4>Save the data to an excel sheet and review for completeness, flagging records accordingly</h4>
+<div class="highlight"><pre><span></span><span class="c1"># save the df to an excel file for review</span>
+<span class="n">df_pk_phi_pivot</span><span class="o">.</span><span class="n">to_excel</span><span class="p">(</span><span class="s1">&#39;df_pk_phi_pivot.xlsx&#39;</span><span class="p">,</span> <span class="n">merge_cells</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="c1"># load the edited excel sheet: specifically the &#39;Output&#39; sheet</span>
+<span class="n">df_pk_phi_pivot</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_excel</span><span class="p">(</span><span class="s1">&#39;./data/output/02_df_pk_phi_pivot_output.xlsx&#39;</span><span class="p">,</span> <span class="n">sheet_name</span><span class="o">=</span><span class="s1">&#39;Output&#39;</span><span class="p">)</span>
+<span class="c1"># save clean data</span>
+<span class="c1"># I added a checkbox column &#39;Invalid&#39; to identify bad data</span>
+<span class="n">df_valid</span> <span class="o">=</span> <span class="n">df_pk_phi_pivot</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s1">&#39;Invalid == False&#39;</span><span class="p">)</span>
+</pre></div>
+
+
+<h3>Create features and labels for modeling</h3>
+<div class="highlight"><pre><span></span><span class="c1"># create labels as a numpy array</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">df_valid</span><span class="p">[[</span><span class="s1">&#39;Letter&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+<span class="c1"># create features, don&#39;t include &#39;s8&#39; or &#39;s9&#39; as they were insignificant</span>
+<span class="n">X</span> <span class="o">=</span> <span class="n">df_valid</span><span class="p">[[</span><span class="s1">&#39;s1&#39;</span><span class="p">,</span><span class="s1">&#39;s2&#39;</span><span class="p">,</span><span class="s1">&#39;s3&#39;</span><span class="p">,</span><span class="s1">&#39;s4&#39;</span><span class="p">,</span><span class="s1">&#39;s5&#39;</span><span class="p">,</span><span class="s1">&#39;s6&#39;</span><span class="p">,</span><span class="s1">&#39;s7&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+<span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan_to_num</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+
+<span class="c1"># Train/Test Split.</span>
+<span class="n">X_train</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">y_test</span> <span class="o">=</span> <span class="n">train_test_split</span><span class="p">(</span><span class="n">X</span><span class="p">,</span>
+                                                    <span class="n">y</span><span class="p">,</span>
+                                                    <span class="n">test_size</span><span class="o">=</span><span class="mf">0.33</span><span class="p">,</span>
+                                                    <span class="n">random_state</span><span class="o">=</span><span class="mi">2019</span><span class="p">,</span>
+                                                    <span class="n">stratify</span><span class="o">=</span><span class="n">y</span><span class="p">)</span>
+</pre></div>
+
+
+<h3>Start modeling with default parameters</h3>
+<div class="highlight"><pre><span></span><span class="c1"># Instantiate support vector machine.</span>
+<span class="n">svc</span> <span class="o">=</span> <span class="n">svm</span><span class="o">.</span><span class="n">SVC</span><span class="p">()</span>
+
+<span class="c1"># Fit support vector machine to training data.</span>
+<span class="n">svc</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="o">.</span><span class="n">ravel</span><span class="p">())</span>
+
+<span class="c1"># Generate predictions.</span>
+<span class="n">y_pred</span> <span class="o">=</span> <span class="n">svc</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span>
+
+<span class="c1"># Measure performance based on accuracy.</span>
+<span class="kn">from</span> <span class="nn">sklearn.metrics</span> <span class="kn">import</span> <span class="n">accuracy_score</span>
+<span class="n">accuracy_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">y_pred</span><span class="o">.</span><span class="n">ravel</span><span class="p">())</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>0.33707865168539325
+</pre></div>
+
+
+<h4>A horrible score, experiment with the hyper-parameters</h4>
+<div class="highlight"><pre><span></span><span class="n">svc</span> <span class="o">=</span> <span class="n">svm</span><span class="o">.</span><span class="n">SVC</span><span class="p">(</span><span class="n">C</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+              <span class="n">kernel</span> <span class="o">=</span> <span class="s1">&#39;rbf&#39;</span><span class="p">,</span>
+              <span class="n">gamma</span> <span class="o">=</span> <span class="s1">&#39;scale&#39;</span><span class="p">,</span>
+              <span class="n">probability</span> <span class="o">=</span> <span class="bp">True</span>
+              <span class="p">)</span>
+
+<span class="c1"># Fit on training data.</span>
+<span class="n">svc</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="o">.</span><span class="n">ravel</span><span class="p">())</span>
+
+<span class="c1"># Evaluate model.</span>
+<span class="n">accuracy_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">svc</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X_test</span><span class="p">))</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>0.9213483146067416
+</pre></div>
+
+
+<h4>Much better. Save the model</h4>
+<div class="highlight"><pre><span></span><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;./model/02_SegmentPolarSVC_clean.pickle&#39;</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">handle</span><span class="p">:</span>
+    <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">svc</span><span class="p">,</span> <span class="n">handle</span><span class="p">)</span>
+</pre></div>
+
+
+<h3>Build data for manually inspecting the model</h3>
+<div class="highlight"><pre><span></span><span class="n">test_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span>
+<span class="n">test_df</span><span class="p">[</span><span class="s1">&#39;actual&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">y_test</span>
+<span class="n">test_df</span><span class="p">[</span><span class="s1">&#39;predicted&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">svc</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="c1"># look at a specific letter</span>
+<span class="n">letter</span> <span class="o">=</span> <span class="s1">&#39;C&#39;</span>
+<span class="n">test_df</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;actual==@letter or predicted==@letter&quot;</span><span class="p">)</span>
+</pre></div>
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>0</th>
+      <th>1</th>
+      <th>2</th>
+      <th>3</th>
+      <th>4</th>
+      <th>5</th>
+      <th>6</th>
+      <th>actual</th>
+      <th>predicted</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>47</th>
+      <td>-142.658613</td>
+      <td>-37.176651</td>
+      <td>32.472729</td>
+      <td>147.527271</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>C</td>
+      <td>C</td>
+    </tr>
+    <tr>
+      <th>55</th>
+      <td>-140.070155</td>
+      <td>-35.485855</td>
+      <td>35.734897</td>
+      <td>146.718353</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>G</td>
+      <td>C</td>
+    </tr>
+    <tr>
+      <th>59</th>
+      <td>-143.350785</td>
+      <td>-38.397763</td>
+      <td>32.458050</td>
+      <td>147.390449</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>C</td>
+      <td>C</td>
+    </tr>
+    <tr>
+      <th>60</th>
+      <td>-144.067077</td>
+      <td>-40.578483</td>
+      <td>32.007376</td>
+      <td>147.284180</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>C</td>
+      <td>C</td>
+    </tr>
+    <tr>
+      <th>84</th>
+      <td>-137.519736</td>
+      <td>-34.152484</td>
+      <td>34.480238</td>
+      <td>149.547195</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>C</td>
+      <td>C</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<p>Looking at the segment angles, 'G' and 'C' are <em>very</em> similar. More training data would likely help.</p>
+<h2>Build a confusion matrix heatmap</h2>
+<div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">sklearn.metrics</span> <span class="kn">import</span> <span class="n">confusion_matrix</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="kn">as</span> <span class="nn">plt</span>
+<span class="kn">import</span> <span class="nn">seaborn</span> <span class="kn">as</span> <span class="nn">sn</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="n">confusion</span> <span class="o">=</span> <span class="n">confusion_matrix</span><span class="p">(</span><span class="n">test_df</span><span class="p">[</span><span class="s1">&#39;actual&#39;</span><span class="p">],</span> <span class="n">test_df</span><span class="p">[</span><span class="s1">&#39;predicted&#39;</span><span class="p">])</span>
+<span class="n">unique_labels</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">test_df</span><span class="p">[</span><span class="s1">&#39;actual&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">())</span>
+<span class="n">df_cm</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">confusion</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">unique_labels</span><span class="p">,</span>
+                     <span class="n">columns</span><span class="o">=</span><span class="n">unique_labels</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span> <span class="o">=</span> <span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="mi">7</span><span class="p">))</span>
+<span class="n">sn</span><span class="o">.</span><span class="n">heatmap</span><span class="p">(</span><span class="n">df_cm</span><span class="p">,</span> <span class="n">annot</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>&lt;matplotlib.axes._subplots.AxesSubplot at 0x1a17639fd0&gt;
+</pre></div>
+
+
+<p><img alt="png" src="./images/blog_008/blog_008_33_1.png"></p>
+<p>Yes, very low counts, as always, need more training data.</p>
+<div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">IPython.display</span> <span class="kn">import</span> <span class="n">clear_output</span>
+</pre></div>
+
+
+<p>Loop through each letter and make observations</p>
+<div class="highlight"><pre><span></span><span class="n">notes</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">letter</span> <span class="ow">in</span> <span class="n">test_df</span><span class="p">[</span><span class="s1">&#39;actual&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">():</span>
+    <span class="n">clear_output</span><span class="p">()</span>
+    <span class="n">display</span><span class="p">(</span><span class="n">test_df</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;actual==@letter&quot;</span><span class="p">))</span> <span class="c1"># and predicted==@letter&quot;))</span>
+    <span class="n">note</span> <span class="o">=</span> <span class="nb">input</span><span class="p">()</span>
+    <span class="n">notes</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">letter</span><span class="p">,</span> <span class="n">note</span><span class="p">])</span>
+<span class="n">display</span><span class="p">(</span><span class="n">notes</span><span class="p">)</span>
+</pre></div>
+ </div>
+</div>
+ </div>
+</body>
+</html>
