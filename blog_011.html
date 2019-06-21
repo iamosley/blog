@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <title>Stencil Fonts 7</title>
+ <!-- Latest compiled and minified CSS -->
+ <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css" integrity="sha384-HSMxcRTRxnN+Bdg0JdbxYKrThecOKuH5zCYotlSAcp1+c8xmyTe9GYg1l9a69psu" crossorigin="anonymous">
+ <div class="container">
+  <h1><a href="https://iamosley.github.io/blog">blog</a></h1>
+ </div>
+</head>
+<body>
+ <div class="container">
+<div class="row">
+ <div class="col-md-8">
+  <h3>Stencil Fonts 7</h3>
+  <label>2019-06-21</label>
+  <h1>Dilate Filtered Data</h1>
+<p>With recognized letters and large glyphs removed, dilate the remaining glyphs for later model inference.
+The "not big" file was manually edited to remove extraneous glyphs since the objective of this project is to infer letters and not differentiate between "signal and noise" (though the latter would be great and the methodology accommodates for a possible improvement in this capability)</p>
+<div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">PIL</span> <span class="kn">import</span> <span class="n">Image</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">scipy</span> <span class="kn">import</span> <span class="n">ndimage</span>
+</pre></div>
+
+
+<h3>Load the image and convert it to an numpy array</h3>
+<p><em>Again, <strong>Disclosure</strong>: I have edited the output from "Remove Large Glyphs" to only include stencil fonts. Inferring all possible glyphs up until this point would have been a labour intensive task as all labels are checked manually for accuracy.</em> </p>
+<div class="highlight"><pre><span></span><span class="c1"># image with high-ratio features, as well as Tesseract text, removed</span>
+<span class="n">filename</span> <span class="o">=</span> <span class="s1">&#39;./data/output/04_66428_not_big_h_letters.png&#39;</span>
+
+<span class="n">drawing</span> <span class="o">=</span> <span class="n">Image</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+
+<span class="c1"># convert the PIL image to an numpy array</span>
+<span class="n">drawer</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">drawing</span><span class="p">)</span>
+
+<span class="c1"># invert the image for dilation</span>
+<span class="n">drawed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_not</span><span class="p">(</span><span class="n">drawer</span><span class="p">)</span>
+</pre></div>
+
+
+<h3>Create horizontal and vertical connectivity structure for dilation</h3>
+<div class="highlight"><pre><span></span><span class="c1"># horizontal structure</span>
+<span class="n">h_struct</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+    <span class="p">[</span><span class="bp">False</span><span class="p">,</span> <span class="bp">False</span><span class="p">,</span> <span class="bp">False</span><span class="p">],</span>
+    <span class="p">[</span><span class="bp">True</span><span class="p">,</span>  <span class="bp">True</span><span class="p">,</span>  <span class="bp">True</span><span class="p">],</span>
+    <span class="p">[</span><span class="bp">False</span><span class="p">,</span> <span class="bp">False</span><span class="p">,</span> <span class="bp">False</span><span class="p">]])</span>
+
+<span class="c1"># vertical structure</span>
+<span class="n">v_struct</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+    <span class="p">[</span><span class="bp">False</span><span class="p">,</span> <span class="bp">True</span><span class="p">,</span> <span class="bp">False</span><span class="p">],</span>
+    <span class="p">[</span><span class="bp">False</span><span class="p">,</span> <span class="bp">True</span><span class="p">,</span> <span class="bp">False</span><span class="p">],</span>
+    <span class="p">[</span><span class="bp">False</span><span class="p">,</span> <span class="bp">True</span><span class="p">,</span> <span class="bp">False</span><span class="p">]])</span>
+</pre></div>
+
+
+<h3>Apply dilation</h3>
+<div class="highlight"><pre><span></span><span class="c1"># copy the array for dilation</span>
+<span class="n">modified</span> <span class="o">=</span> <span class="n">drawed</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+<span class="c1"># three horizontals,</span>
+<span class="n">modified</span> <span class="o">=</span> <span class="n">ndimage</span><span class="o">.</span><span class="n">binary_dilation</span><span class="p">(</span><span class="n">modified</span><span class="p">,</span> <span class="n">structure</span><span class="o">=</span><span class="n">h_struct</span><span class="p">,</span> <span class="n">iterations</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+<span class="c1"># then three veticals</span>
+<span class="n">modified</span> <span class="o">=</span> <span class="n">ndimage</span><span class="o">.</span><span class="n">binary_dilation</span><span class="p">(</span><span class="n">modified</span><span class="p">,</span> <span class="n">structure</span><span class="o">=</span><span class="n">v_struct</span><span class="p">,</span> <span class="n">iterations</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+</pre></div>
+
+
+<ul>
+<li>Dilation seems to work very well for small glyphs with three horizontal and then three vertical structures for the smaller letters</li>
+<li>Order of these operations, horizontal then vertical, is significant</li>
+</ul>
+<h2>Create the output file</h2>
+<div class="highlight"><pre><span></span><span class="c1"># create a new, blank, white image</span>
+<span class="n">modification</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">modified</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="mi">255</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+<span class="c1"># apply the dilated filter</span>
+<span class="n">modification</span><span class="p">[</span><span class="n">modified</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+
+<span class="c1"># convert the numpy array to a PIL image</span>
+<span class="n">im</span> <span class="o">=</span> <span class="n">Image</span><span class="o">.</span><span class="n">fromarray</span><span class="p">(</span><span class="n">modification</span><span class="p">)</span>
+
+<span class="c1"># save the image</span>
+<span class="n">im</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s1">&#39;./data/output/05_66428_dilated.png&#39;</span><span class="p">)</span>
+</pre></div>
+
+
+<p>In this image, the stencil fonts have been dilated so they are now connected to other segments within the letter. This step provides a quick way to 'group' segments together for later inference by the SVM model. Without this step, a sequential process would be created to iterate through the file comparing the current centroid with all other centroids within a reasonable distance.</p>
+<p><img alt="alt_text" src="./images/blog_011/05_66428_dilated.png"></p>
+<p>Specifically, note how letter segments in 'LAWRENCE' are now dissolved. Also, some of the adjacent letters are dissolved too. This side-affect is dealt with in the next post.</p>
+<p><img alt="alt_text" src="./images/blog_011/Lawrence.png"></p>
+<h2>Up Next: Final Post for the Stencil Font project!</h2>
+<h3>Applying the SVM model to centroids grouped together by the dilated letters</h3>
+<p>Everything is wrapped-up with an image showing overall success.</p>
+ </div>
+</div>
+ </div>
+</body>
+</html>
