@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <title>Stencil Fonts 6</title>
+ <!-- Latest compiled and minified CSS -->
+ <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css" integrity="sha384-HSMxcRTRxnN+Bdg0JdbxYKrThecOKuH5zCYotlSAcp1+c8xmyTe9GYg1l9a69psu" crossorigin="anonymous">
+ <div class="container">
+  <h1><a href="https://iamosley.github.io/blog">blog</a></h1>
+ </div>
+</head>
+<body>
+ <div class="container">
+<div class="row">
+ <div class="col-md-8">
+  <h3>Stencil Fonts 6</h3>
+  <label>2019-06-21</label>
+  <h1>Remove large glyphs</h1>
+<p>Now that recognized letters are removed, remove non-letters from the image based on segment scale and pixel count</p>
+<div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">PIL</span> <span class="kn">import</span> <span class="n">Image</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">scipy</span> <span class="kn">import</span> <span class="n">ndimage</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">label_shape_counts</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; Extract segments and their shapes from an image.&#39;&#39;&#39;</span>
+    <span class="n">drawing</span> <span class="o">=</span> <span class="n">Image</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+
+    <span class="c1"># convert the PIL image to an numpy array</span>
+    <span class="n">drawer</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">drawing</span><span class="p">)</span>
+
+    <span class="c1"># invert the image for labeling</span>
+    <span class="n">drawed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_not</span><span class="p">(</span><span class="n">drawer</span><span class="p">)</span>
+
+    <span class="c1"># label each of the adjacent pixels creating segments</span>
+    <span class="n">label_im</span><span class="p">,</span> <span class="n">nb_labels</span> <span class="o">=</span> <span class="n">ndimage</span><span class="o">.</span><span class="n">label</span><span class="p">(</span><span class="n">drawed</span><span class="p">)</span>
+
+    <span class="c1"># determine the number of featurse in each segment</span>
+    <span class="n">_</span><span class="p">,</span> <span class="n">label_counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">label_im</span><span class="p">,</span> <span class="n">return_counts</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span> <span class="c1"># includes background == 0</span>
+
+    <span class="c1"># determine shape of each label</span>
+    <span class="c1"># note that ndimage.find_objects ignores the background, so the indexes are off by 1</span>
+    <span class="n">slices</span> <span class="o">=</span> <span class="n">ndimage</span><span class="o">.</span><span class="n">find_objects</span><span class="p">(</span><span class="n">label_im</span><span class="p">)</span>
+
+    <span class="c1"># with a list comprehension, calculate each segment shape</span>
+    <span class="n">label_shapes</span> <span class="o">=</span> <span class="p">[[</span><span class="n">slices</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">stop</span> <span class="o">-</span> <span class="n">slices</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">start</span><span class="p">,</span> <span class="n">slices</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">stop</span> <span class="o">-</span> <span class="n">slices</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">start</span><span class="p">,</span>
+                     <span class="n">label_counts</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]]</span>
+                    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nb_labels</span><span class="p">)]</span>
+
+    <span class="k">return</span> <span class="n">label_shapes</span><span class="p">,</span> <span class="n">label_im</span>
+</pre></div>
+
+
+<h2>For the file with letters removed, and the training dataset, produce segment images and shapes</h2>
+<p>The "Sample Letters" file used here is different from the files used for EDA and SVM training. The latter were files of individual letters that were labeled via the filename. The 'letter' file being used here is a single image with many letters in no particular arrangement, other than they are all horizontally aligned. While there are stencil fonts at obtuse angles in the original image, processing those are beyond the scope of this project.</p>
+<div class="highlight"><pre><span></span><span class="n">drawing_shapes</span><span class="p">,</span> <span class="n">drawing_labels</span> <span class="o">=</span> <span class="n">label_shape_counts</span><span class="p">(</span><span class="s1">&#39;./data/output/03_66428_grey_sliced.png&#39;</span><span class="p">)</span>
+<span class="n">letter_shapes</span><span class="p">,</span> <span class="n">letter_labels</span> <span class="o">=</span> <span class="n">label_shape_counts</span><span class="p">(</span><span class="s1">&#39;./data/output/00_SampleLetters.png&#39;</span><span class="p">)</span>
+</pre></div>
+
+
+<h4>Figure out maximum segment sizes from the letter image</h4>
+<div class="highlight"><pre><span></span><span class="c1"># figure out maximum letter glyph shape and count</span>
+<span class="n">max_x</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">max_y</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">max_count</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">letter_shapes</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">i</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">max_x</span><span class="p">:</span>
+        <span class="n">max_x</span> <span class="o">=</span> <span class="n">i</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">i</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">max_y</span><span class="p">:</span>
+        <span class="n">max_y</span> <span class="o">=</span> <span class="n">i</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">i</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">max_count</span><span class="p">:</span>
+        <span class="n">max_count</span> <span class="o">=</span> <span class="n">i</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+<span class="k">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Max x: {max_x}, max y: {max_y}, max pixel count: {max_count}&#39;</span><span class="p">)</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>Max x: 32, max y: 53, max pixel count: 971
+</pre></div>
+
+
+<h3>Create a list of glyphs in the input image that have segments larger than those in the letter image</h3>
+<p>Whiten those glyphs and create a new file</p>
+<div class="highlight"><pre><span></span><span class="c1"># create a list of labels from the drawing that have big glyphs</span>
+<span class="n">big_glyphs</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="c1">#  include the background</span>
+<span class="n">image</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">drawing_shapes</span><span class="p">:</span>
+    <span class="n">image</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">if</span> <span class="n">i</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">max_x</span> <span class="ow">or</span> <span class="n">i</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">max_y</span> <span class="ow">or</span> <span class="n">i</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">max_count</span><span class="p">:</span>
+        <span class="n">big_glyphs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+
+<span class="c1"># zero-out labels that are too big by making them &#39;white&#39;==255</span>
+<span class="n">drawing_not_big</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">drawing_labels</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+<span class="n">drawing_not_big</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">drawing_labels</span><span class="p">,</span> <span class="n">big_glyphs</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">255</span>
+
+<span class="c1"># convert the numpy array to a PIL image</span>
+<span class="n">im</span> <span class="o">=</span> <span class="n">Image</span><span class="o">.</span><span class="n">fromarray</span><span class="p">(</span><span class="n">drawing_not_big</span><span class="p">)</span>
+
+<span class="c1"># save the image</span>
+<span class="n">im</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s1">&#39;./data/output/04_66428_not_big.png&#39;</span><span class="p">)</span>
+</pre></div>
+
+
+<h2>With large glyphs removed, only dashed lines and (stencil) letters remain.</h2>
+<p><img alt="alt_text" src="./images/blog_010/04_66428_not_big.png"></p>
+<h2>Next up:</h2>
+<h3>Dilating segments to envelope centroids</h3>
+<p>It would be an onerous task to sequentially search the source image for every centroid and its neighbours. Instead, subset the problem by grouping centroids based merged, dilated glyphs.</p>
+ </div>
+</div>
+ </div>
+</body>
+</html>

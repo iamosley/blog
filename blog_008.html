@@ -143,11 +143,11 @@
 
 
 <h4>Pivot the data into a columnar format for SVM processing</h4>
-<div class="highlight"><pre><span></span><span class="n">df_pk_phi</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;Letter == &#39;0&#39; &amp; Image == &#39;10&#39; &amp; Start == &#39;205&#39;&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><span class="c1"># The data looked like:</span>
+<span class="n">df_pk_phi</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;Letter == &#39;0&#39; &amp; Image == &#39;10&#39; &amp; Start == &#39;205&#39;&quot;</span><span class="p">)</span>
 </pre></div>
 
 
-<p>The data looked like:</p>
 <div>
 <style scoped>
     .dataframe tbody tr th:only-of-type {
@@ -212,11 +212,11 @@
 </pre></div>
 
 
-<div class="highlight"><pre><span></span><span class="n">df_pk_phi_pivot</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;Letter == &#39;0&#39; &amp; Image == &#39;10&#39; &amp; Start == &#39;205&#39;&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><span class="c1"># And in its pivoted form, looks like:</span>
+<span class="n">df_pk_phi_pivot</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;Letter == &#39;0&#39; &amp; Image == &#39;10&#39; &amp; Start == &#39;205&#39;&quot;</span><span class="p">)</span>
 </pre></div>
 
 
-<p>And in its pivoted form, looks like:</p>
 <div>
 <style scoped>
     .dataframe tbody tr th:only-of-type {
@@ -328,7 +328,14 @@
 </pre></div>
 
 
-<div class="highlight"><pre><span></span>0.33707865168539325
+<div class="highlight"><pre><span></span>/Users/ianmosley/anaconda3/lib/python3.6/site-packages/sklearn/svm/base.py:196: FutureWarning: The default value of gamma will change from &#39;auto&#39; to &#39;scale&#39; in version 0.22 to account better for unscaled features. Set gamma explicitly to &#39;auto&#39; or &#39;scale&#39; to avoid this warning.
+  &quot;avoid this warning.&quot;, FutureWarning)
+
+
+
+
+
+0.33707865168539325
 </pre></div>
 
 
@@ -485,7 +492,7 @@
 </pre></div>
 
 
-<p><img alt="png" src="./images/blog_008/blog_008_33_1.png"></p>
+<p><img alt="png" src="images/blog_008/blog_008_33_1.png"></p>
 <p>Yes, very low counts, as always, need more training data.</p>
 <div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">IPython.display</span> <span class="kn">import</span> <span class="n">clear_output</span>
 </pre></div>

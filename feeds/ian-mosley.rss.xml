@@ -1,5 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<rss version="2.0"><channel><title>blog - Ian Mosley</title><link>https://iamosley.github.io/blog/</link><description></description><lastBuildDate>Thu, 20 Jun 2019 15:57:00 -0400</lastBuildDate><item><title>Stencil Fonts 5</title><link>https://iamosley.github.io/blog/blog_009.html</link><description>&lt;h1&gt;OCR Known Text&lt;/h1&gt;
+<rss version="2.0"><channel><title>blog - Ian Mosley</title><link>https://iamosley.github.io/blog/</link><description></description><lastBuildDate>Fri, 21 Jun 2019 08:41:00 -0400</lastBuildDate><item><title>Stencil Fonts 6</title><link>https://iamosley.github.io/blog/blog_010.html</link><description>&lt;h1&gt;Remove large glyphs&lt;/h1&gt;
+&lt;p&gt;Now that recognized letters are removed, remove non-letters from the image based on segment scale and pixel count&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;PIL&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;Image&lt;/span&gt;
+&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;numpy&lt;/span&gt; &lt;span class="kn"&gt;as&lt;/span&gt; &lt;span class="nn"&gt;np&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;scipy&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;ndimage&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;label_shape_counts&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;filename&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="sd"&gt;&amp;#39;&amp;#39;&amp;#39; Extract segments and their shapes from an image.&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+    &lt;span class="n"&gt;drawing&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;Image&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;open&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;filename&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+    &lt;span class="c1"&gt;# convert the …&lt;/span&gt;&lt;/pre&gt;&lt;/div&gt;</description><dc:creator xmlns:dc="http://purl.org/dc/elements/1.1/">Ian Mosley</dc:creator><pubDate>Fri, 21 Jun 2019 08:41:00 -0400</pubDate><guid isPermaLink="false">tag:iamosley.github.io,2019-06-21:/blog/blog_010.html</guid><category>python</category><category>jupyter</category></item><item><title>Stencil Fonts 5</title><link>https://iamosley.github.io/blog/blog_009.html</link><description>&lt;h1&gt;OCR Known Text&lt;/h1&gt;
 &lt;p&gt;Remove recognizeable text from image using Tesseract OCR&lt;/p&gt;
 &lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;PIL&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;Image&lt;/span&gt;
 &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;pytesseract&lt;/span&gt;
