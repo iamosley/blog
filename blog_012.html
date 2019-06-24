@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <title>Stencil Fonts 8</title>
+ <!-- Latest compiled and minified CSS -->
+ <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css" integrity="sha384-HSMxcRTRxnN+Bdg0JdbxYKrThecOKuH5zCYotlSAcp1+c8xmyTe9GYg1l9a69psu" crossorigin="anonymous">
+ <div class="container">
+  <h1><a href="https://iamosley.github.io/blog">blog</a></h1>
+ </div>
+</head>
+<body>
+ <div class="container">
+<div class="row">
+ <div class="col-md-8">
+  <h3>Stencil Fonts 8</h3>
+  <label>2019-06-24</label>
+  <h1>Infer Letters Using SVC Model</h1>
+<p>Using the dilated features as a 'mask', select original image glyphs and infer the letter</p>
+<div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">import</span> <span class="nn">pickle</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">PIL</span> <span class="kn">import</span> <span class="n">Image</span>
+<span class="kn">from</span> <span class="nn">scipy</span> <span class="kn">import</span> <span class="n">ndimage</span>
+<span class="kn">from</span> <span class="nn">sklearn</span> <span class="kn">import</span> <span class="n">svm</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="kn">as</span> <span class="nn">plt</span>
+<span class="kn">from</span> <span class="nn">IPython.display</span> <span class="kn">import</span> <span class="n">clear_output</span>
+</pre></div>
+
+
+<h2>Load the model for letter inference</h2>
+<div class="highlight"><pre><span></span><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;./model/02_SegmentPolarSVC_clean.pickle&#39;</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">handle</span><span class="p">:</span>
+    <span class="n">svc</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">handle</span><span class="p">)</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">import_image</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Read an image file from disk, convert it to a numpy array and label groups.</span>
+
+<span class="sd">    Assumes that the images are single band grey scale.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">drawing</span> <span class="o">=</span> <span class="n">Image</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+
+    <span class="c1"># convert the PIL image to an numpy array</span>
+    <span class="n">drawer</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">drawing</span><span class="p">)</span>
+
+    <span class="c1"># invert the image for processing</span>
+    <span class="n">drawed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_not</span><span class="p">(</span><span class="n">drawer</span><span class="p">)</span>
+
+    <span class="c1"># label each of the adjacent pixels</span>
+    <span class="n">labels</span><span class="p">,</span> <span class="n">count</span> <span class="o">=</span> <span class="n">ndimage</span><span class="o">.</span><span class="n">label</span><span class="p">(</span><span class="n">drawed</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="n">count</span><span class="p">)</span> <span class="c1"># how many regions?</span>
+
+    <span class="k">return</span> <span class="n">labels</span><span class="p">,</span> <span class="n">count</span><span class="p">,</span> <span class="n">drawed</span>
+</pre></div>
+
+
+<h3>Process the original and dilated file, creating images, labels (segments) and counts</h3>
+<div class="highlight"><pre><span></span><span class="c1"># image prior to dilation</span>
+<span class="n">pre_dil_labels</span><span class="p">,</span> <span class="n">pre_dil_count</span><span class="p">,</span> <span class="n">pre_dil</span> <span class="o">=</span> <span class="n">import_image</span><span class="p">(</span><span class="s1">&#39;./data/output/00_66428_for_clipping.png&#39;</span><span class="p">)</span>
+<span class="c1"># image with dilated features</span>
+<span class="n">post_dil_labels</span><span class="p">,</span> <span class="n">post_dil_count</span><span class="p">,</span> <span class="n">post_dil</span> <span class="o">=</span> <span class="n">import_image</span><span class="p">(</span><span class="s1">&#39;./data/output/06_66428_dilated.png&#39;</span><span class="p">)</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>4892
+86
+</pre></div>
+
+
+<h2>Assign the segment labels of the dilated image to the original file</h2>
+<div class="highlight"><pre><span></span><span class="c1"># determine the centroid of each segment for the original file</span>
+<span class="n">centroids</span> <span class="o">=</span> <span class="n">ndimage</span><span class="o">.</span><span class="n">measurements</span><span class="o">.</span><span class="n">center_of_mass</span><span class="p">(</span><span class="n">pre_dil_labels</span><span class="p">,</span> <span class="n">pre_dil_labels</span><span class="p">,</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">pre_dil_count</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
+
+<span class="c1"># create a zero ndarray for the centroid labels</span>
+<span class="n">centroid_labels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">pre_dil</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+
+<span class="c1"># assign the label from the dilated image to the pre-dilated centroid</span>
+<span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="ow">in</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">rint</span><span class="p">(</span><span class="n">coord</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span> <span class="k">for</span> <span class="n">coord</span> <span class="ow">in</span> <span class="n">centroids</span><span class="p">]:</span>
+    <span class="n">centroid_labels</span><span class="p">[</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">]</span> <span class="o">=</span> <span class="n">post_dil_labels</span><span class="p">[</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">]</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">cart2pol_sorted_y</span><span class="p">(</span><span class="n">vertices</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Convert the cartesian coordinates to polar angles (phi).</span>
+<span class="sd">    This method assumes that the vertices are sorted on the Y-axis&#39;&#39;&#39;</span>
+    <span class="n">x_min</span> <span class="o">=</span> <span class="n">vertices</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+    <span class="n">y_min</span> <span class="o">=</span> <span class="n">vertices</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">x_max</span> <span class="o">=</span> <span class="n">vertices</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+    <span class="n">y_max</span> <span class="o">=</span> <span class="n">vertices</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">x_avg</span> <span class="o">=</span> <span class="p">(</span><span class="n">x_min</span> <span class="o">+</span> <span class="n">x_max</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
+    <span class="n">y_avg</span> <span class="o">=</span> <span class="p">(</span><span class="n">y_min</span> <span class="o">+</span> <span class="n">y_max</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
+    <span class="c1"># recenter the centroids</span>
+    <span class="n">vertices</span> <span class="o">=</span> <span class="p">[[</span><span class="n">i</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">x_avg</span><span class="p">,</span> <span class="n">i</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">y_avg</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">vertices</span><span class="p">]</span>
+    <span class="c1"># calculate angle as degrees +/-180</span>
+    <span class="n">phi</span> <span class="o">=</span> <span class="p">[</span><span class="n">math</span><span class="o">.</span><span class="n">degrees</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arctan2</span><span class="p">(</span><span class="n">i</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">i</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">vertices</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">phi</span><span class="p">))</span>
+</pre></div>
+
+
+<h2>Iterate through all the dilated masks and score the glyph against the SVC model. Display the original masked glyph and the infered letter, score, and its glyph subset.</h2>
+<div class="highlight"><pre><span></span><span class="c1"># loop through each label and determine the number of centroids in it</span>
+<span class="n">total_labels</span> <span class="o">=</span> <span class="n">post_dil_count</span> <span class="c1"># this might increment when glyphs are split</span>
+<span class="n">current_label</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">min_centroid_count</span> <span class="o">=</span> <span class="mi">3</span> <span class="c1"># every glyph has at least N centroids</span>
+<span class="n">max_svm_features</span> <span class="o">=</span> <span class="mi">7</span> <span class="c1"># maximum number of modeled features in SVM</span>
+<span class="n">predictions</span> <span class="o">=</span> <span class="p">[]</span> <span class="c1"># list of all the predictions</span>
+<span class="k">while</span> <span class="n">current_label</span> <span class="o">&lt;=</span> <span class="n">total_labels</span><span class="p">:</span>
+    <span class="c1"># total number of centroids for the current label</span>
+    <span class="n">label_centroid_count</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">centroid_labels</span><span class="o">==</span><span class="n">current_label</span><span class="p">)</span>
+    <span class="c1"># if there are less than the minimum required centroids then skip this label</span>
+    <span class="k">if</span> <span class="n">label_centroid_count</span> <span class="o">&lt;</span> <span class="n">min_centroid_count</span><span class="p">:</span>
+        <span class="n">current_label</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">continue</span>
+    <span class="c1"># get an array of centroids for the current label</span>
+    <span class="n">label_centroids</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">centroid_labels</span><span class="o">==</span><span class="n">current_label</span><span class="p">)</span>
+    <span class="c1"># the slices that define the post-dilation label</span>
+    <span class="n">loc</span> <span class="o">=</span> <span class="n">ndimage</span><span class="o">.</span><span class="n">find_objects</span><span class="p">(</span><span class="n">post_dil_labels</span><span class="o">==</span><span class="n">current_label</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="c1"># display yhe slice for reference</span>
+    <span class="n">display</span><span class="p">(</span><span class="n">loc</span><span class="p">)</span>
+    <span class="c1"># create an image that overlays the pre-dilation letter over the post-dilation image mask</span>
+    <span class="n">overlay_image</span> <span class="o">=</span> <span class="n">post_dil_labels</span><span class="p">[</span><span class="n">loc</span><span class="p">]</span>
+    <span class="n">pre_dil_loc</span> <span class="o">=</span> <span class="n">pre_dil</span><span class="p">[</span><span class="n">loc</span><span class="p">]</span>
+    <span class="n">overlay_image</span><span class="p">[</span><span class="n">pre_dil_loc</span><span class="o">==</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">overlay_image</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+    <span class="c1"># prepare the centroid array for sorting along the Y axis</span>
+    <span class="n">label_centroids_T</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">label_centroids</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+    <span class="n">sorted_centroids</span> <span class="o">=</span> <span class="n">label_centroids_T</span><span class="p">[</span><span class="n">label_centroids_T</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">argsort</span><span class="p">()]</span>
+    <span class="c1"># determine how many features (aka phi) to process, lesser-of centroid count or max features</span>
+    <span class="n">min_centroid_features</span> <span class="o">=</span> <span class="nb">min</span><span class="p">([</span><span class="n">sorted_centroids</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">max_svm_features</span><span class="p">])</span> <span class="o">+</span> <span class="mi">1</span>
+    <span class="c1"># a list to store tuples of metadata for each iteration</span>
+    <span class="n">scores</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="c1"># continually enlarge the list of features and score them</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">min_centroid_count</span><span class="p">,</span> <span class="n">min_centroid_features</span><span class="p">):</span>
+        <span class="c1"># convert the cartesian coordinates to angles (phi)</span>
+        <span class="n">phi</span> <span class="o">=</span> <span class="n">cart2pol_sorted_y</span><span class="p">(</span><span class="n">sorted_centroids</span><span class="p">[:</span><span class="n">i</span><span class="p">])</span>
+        <span class="c1"># if necesary, extend the array to maximum feature count</span>
+        <span class="n">phi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">phi</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">max_svm_features</span> <span class="o">-</span> <span class="n">phi</span><span class="o">.</span><span class="n">size</span><span class="p">)))</span>
+        <span class="n">predict</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">svc</span><span class="o">.</span><span class="n">predict_proba</span><span class="p">(</span><span class="n">phi</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">))</span><span class="o">.</span><span class="n">max</span><span class="p">(),</span> <span class="c1"># score</span>
+            <span class="n">svc</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">phi</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">))[</span><span class="mi">0</span><span class="p">],</span>          <span class="c1"># prediction</span>
+            <span class="n">i</span><span class="p">)</span>                                          <span class="c1"># i-th centroid</span>
+        <span class="n">scores</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">predict</span><span class="p">)</span>
+    <span class="c1"># get the best prediction</span>
+    <span class="n">best</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">scores</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="c1"># print the best score, the infered letter, and the number of segments</span>
+    <span class="k">print</span><span class="p">(</span><span class="n">best</span><span class="p">)</span>
+    <span class="c1"># increment the label numbers when best[2] &lt; min_centroid_features - 1</span>
+    <span class="c1"># basically, a label is being split into two new glyphs so need to insert it into the</span>
+    <span class="c1"># array of glyphs</span>
+    <span class="k">if</span> <span class="n">best</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">sorted_centroids</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="c1"># remember which centroid we&#39;re processing</span>
+        <span class="n">i</span> <span class="o">=</span> <span class="n">best</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+        <span class="c1"># increment the labels that haven&#39;t been processed yet</span>
+        <span class="n">centroid_labels</span><span class="p">[</span><span class="n">centroid_labels</span> <span class="o">&gt;</span> <span class="n">current_label</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">post_dil_labels</span><span class="p">[</span><span class="n">post_dil_labels</span> <span class="o">&gt;</span> <span class="n">current_label</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="c1"># increment the total number of labels since we just added one</span>
+        <span class="n">total_labels</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="c1"># split the image at the i-th centroid</span>
+        <span class="n">y1</span> <span class="o">=</span> <span class="n">sorted_centroids</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">y2</span> <span class="o">=</span> <span class="n">sorted_centroids</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>
+        <span class="c1"># calculate the Y axis mid-point</span>
+        <span class="n">y_hat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">rint</span><span class="p">((</span><span class="n">y1</span> <span class="o">+</span> <span class="n">y2</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">y_hat</span> <span class="o">==</span> <span class="n">y1</span><span class="p">:</span>
+            <span class="n">y_hat</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="c1"># create the new slice for the split label</span>
+        <span class="n">loc</span> <span class="o">=</span> <span class="p">(</span><span class="n">loc</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">slice</span><span class="p">(</span><span class="n">y_hat</span><span class="p">,</span> <span class="n">loc</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">stop</span><span class="p">,</span> <span class="bp">None</span><span class="p">))</span>
+        <span class="c1"># increment the current label and zero-out what&#39;s remaining (so it doesn&#39;t get reprecessed)</span>
+        <span class="n">centroid_labels</span><span class="p">[</span><span class="n">loc</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">centroid_labels</span><span class="p">[</span><span class="n">loc</span><span class="p">]</span> <span class="o">==</span> <span class="n">current_label</span><span class="p">,</span> <span class="n">current_label</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">post_dil_labels</span><span class="p">[</span><span class="n">loc</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">post_dil_labels</span><span class="p">[</span><span class="n">loc</span><span class="p">]</span> <span class="o">==</span> <span class="n">current_label</span><span class="p">,</span> <span class="n">current_label</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">loc</span> <span class="o">=</span> <span class="n">ndimage</span><span class="o">.</span><span class="n">find_objects</span><span class="p">(</span><span class="n">post_dil_labels</span><span class="o">==</span><span class="n">current_label</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="c1"># create a clipped image that overlays the pre-dilation letter over the post-dilation image</span>
+        <span class="n">best_image</span> <span class="o">=</span> <span class="n">post_dil_labels</span><span class="p">[</span><span class="n">loc</span><span class="p">]</span>
+        <span class="n">pre_dil_loc</span> <span class="o">=</span> <span class="n">pre_dil</span><span class="p">[</span><span class="n">loc</span><span class="p">]</span>
+        <span class="n">best_image</span><span class="p">[</span><span class="n">pre_dil_loc</span><span class="o">==</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">best_image</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>   
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># no splitting required, set the image to display</span>
+        <span class="n">best_image</span> <span class="o">=</span> <span class="n">overlay_image</span>
+    <span class="c1"># increment the current label for the next round of processing</span>
+    <span class="n">current_label</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="c1"># but first, get some feedback on how well the model infered the letter</span>
+    <span class="n">key</span> <span class="o">=</span> <span class="nb">input</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">key</span> <span class="o">==</span> <span class="s1">&#39;q&#39;</span><span class="p">:</span>
+        <span class="k">break</span>
+    <span class="c1"># keys are: {&#39;&#39;: &#39;good assignment&#39;, &#39;c&#39;: &#39;crap, bounding box error&#39;, &#39;b&#39;: &#39;bad SVM assignment&#39;}</span>
+    <span class="n">predictions</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">best</span><span class="p">,</span> <span class="n">best_image</span><span class="p">,</span> <span class="n">key</span><span class="p">])</span>
+    <span class="n">clear_output</span><span class="p">()</span>
+</pre></div>
+
+
+<h2>Sample Output:</h2>
+<p><img alt="alt_text" src="./images/blog_012/DilationAssignment.png"></p>
+<ul>
+<li>In this example, the dilated and dissolved segments partition the word “EAST” with a bounding box of [(785, 2196), (821, 2301)]</li>
+<li>Then the SVC model is applied and the letter ‘E’ is found with the highest score of 0.647 applied across 6 segments.</li>
+</ul>
+<h2>Final Results:</h2>
+<p><img alt="alt_text" src="./images/blog_012/00_66428_for_clipping_of_01.png"></p>
+<p>The Green boxes are attempts and Red are success.</p>
+<h1>Conclusions</h1>
+<p><ul>
+  <li>Promising results given little training data and no deep learning models (can be run on a modest computer with no GPU or TPU)</li>
+    <li>Immediate improvements would result from:
+        <ul>
+        <li>More training data for the entire alphabet and apparent font sizes</li>
+        <li>Tesseract custom training on non-stencil fonts so only alphanumerics are captured</li>
+        <li>Apply rotation to dissolved segments so obtusely aligned fonts are recognized</li>
+    </ul>
+  </li>
+    <li>Longer term research:
+        <ul>
+        <li>From the EDA portion of research, determine utility of using polar clusters instead of raw angles</li>
+        <li>Could Tesseract be used to OCR stencil fonts directly</li>
+        <li>Group recognized letters into words and paragraphs</li>
+    </ul>
+  </li>
+</ul></p>
+ </div>
+</div>
+ </div>
+</body>
+</html>
