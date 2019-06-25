@@ -286,7 +286,7 @@ The "not big" file was manually edited to remove extraneous glyphs since the obj
 &lt;p&gt;Specifically, note how letter segments in 'LAWRENCE' are now dissolved. Also, some of the adjacent letters are dissolved too. This side-affect is dealt with in the next post.&lt;/p&gt;
 &lt;p&gt;&lt;img alt="alt_text" src="./images/blog_011/Lawrence.png"&gt;&lt;/p&gt;
 &lt;h2&gt;Up Next: Final Post for the Stencil Font project!&lt;/h2&gt;
-&lt;h3&gt;Applying the SVM model to centroids grouped together by the dilated letters&lt;/h3&gt;
+&lt;h3&gt;&lt;a href="https://iamosley.github.io/blog/blog_012.html"&gt;Applying the SVM model to centroids grouped together by the dilated letters&lt;/a&gt;&lt;/h3&gt;
 &lt;p&gt;Everything is wrapped-up with an image showing overall success.&lt;/p&gt;</content><category term="python"></category><category term="jupyter"></category></entry><entry><title>Stencil Fonts 6</title><link href="https://iamosley.github.io/blog/blog_010.html" rel="alternate"></link><published>2019-06-21T08:41:00-04:00</published><updated>2019-06-21T08:41:00-04:00</updated><author><name>Ian Mosley</name></author><id>tag:iamosley.github.io,2019-06-21:/blog/blog_010.html</id><summary type="html">&lt;h1&gt;Remove large glyphs&lt;/h1&gt;
 &lt;p&gt;Now that recognized letters are removed, remove non-letters from the image based on segment scale and pixel count&lt;/p&gt;
 &lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;PIL&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;Image&lt;/span&gt;
@@ -388,7 +388,7 @@ The "not big" file was manually edited to remove extraneous glyphs since the obj
 &lt;h2&gt;With large glyphs removed, only dashed lines and (stencil) letters remain.&lt;/h2&gt;
 &lt;p&gt;&lt;img alt="alt_text" src="./images/blog_010/04_66428_not_big.png"&gt;&lt;/p&gt;
 &lt;h2&gt;Next up:&lt;/h2&gt;
-&lt;h3&gt;Dilating segments to envelope centroids&lt;/h3&gt;
+&lt;h3&gt;&lt;a href="https://iamosley.github.io/blog/blog_011.html"&gt;Dilating segments to envelope centroids&lt;/a&gt;&lt;/h3&gt;
 &lt;p&gt;It would be an onerous task to sequentially search the source image for every centroid and its neighbours. Instead, subset the problem by grouping centroids based merged, dilated glyphs.&lt;/p&gt;</content><category term="python"></category><category term="jupyter"></category></entry><entry><title>Stencil Fonts 5</title><link href="https://iamosley.github.io/blog/blog_009.html" rel="alternate"></link><published>2019-06-20T15:57:00-04:00</published><updated>2019-06-20T15:57:00-04:00</updated><author><name>Ian Mosley</name></author><id>tag:iamosley.github.io,2019-06-20:/blog/blog_009.html</id><summary type="html">&lt;h1&gt;OCR Known Text&lt;/h1&gt;
 &lt;p&gt;As a first step to 'decluttering' the survey plan image, remove recognizable text using the Tesseract OCR python library&lt;/p&gt;
 &lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;PIL&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;Image&lt;/span&gt;
@@ -511,7 +511,7 @@ The "not big" file was manually edited to remove extraneous glyphs since the obj
 &lt;p&gt;Even some of the stencil fonts have been 'recognized', but those are a false-positives as individual glyphs within the letter that have been labeled as punctuation marks. Tesseract did fulfill its purpose of removing unnecessary glyphs that could be recognied by other OCR processes and leave behind large glyphs and stencil fonts.&lt;/p&gt;
 &lt;p&gt;&lt;img alt="alt_text" src="./images/blog_009/03_66428_grey_sliced.png"&gt;&lt;/p&gt;
 &lt;h2&gt;Next Post:&lt;/h2&gt;
-&lt;h3&gt;Removing large glyphs representing drawing elements.&lt;/h3&gt;
+&lt;h3&gt;&lt;a href="https://iamosley.github.io/blog/blog_010.html"&gt;Removing large glyphs representing drawing elements&lt;/a&gt;&lt;/h3&gt;
 &lt;p&gt;This relies on raw glyph dimensions and image processing.&lt;/p&gt;</content><category term="python"></category><category term="jupyter"></category></entry><entry><title>Stencil Fonts 4</title><link href="https://iamosley.github.io/blog/blog_008.html" rel="alternate"></link><published>2019-06-20T11:11:00-04:00</published><updated>2019-06-20T11:11:00-04:00</updated><author><name>Ian Mosley</name></author><id>tag:iamosley.github.io,2019-06-20:/blog/blog_008.html</id><summary type="html">&lt;h1&gt;Using segment angles as a feature, model using SVC&lt;/h1&gt;
 &lt;p&gt;EDA revealed the distinct characterizing of letters by polar angle of their segments; use SVC to create a model to predict letters&lt;/p&gt;
 &lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;glob&lt;/span&gt;
@@ -1011,7 +1011,12 @@ The "not big" file was manually edited to remove extraneous glyphs since the obj
     &lt;span class="n"&gt;note&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nb"&gt;input&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
     &lt;span class="n"&gt;notes&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;append&lt;/span&gt;&lt;span class="p"&gt;([&lt;/span&gt;&lt;span class="n"&gt;letter&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;note&lt;/span&gt;&lt;span class="p"&gt;])&lt;/span&gt;
 &lt;span class="n"&gt;display&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;notes&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
-&lt;/pre&gt;&lt;/div&gt;</content><category term="python"></category><category term="jupyter"></category></entry><entry><title>Stencil Fonts 3</title><link href="https://iamosley.github.io/blog/blog_007.html" rel="alternate"></link><published>2019-06-19T08:57:00-04:00</published><updated>2019-06-19T08:57:00-04:00</updated><author><name>Ian Mosley</name></author><id>tag:iamosley.github.io,2019-06-19:/blog/blog_007.html</id><summary type="html">&lt;h1&gt;Exploratory Data Analysis&lt;/h1&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;h2&gt;Soon to be followed by:&lt;/h2&gt;
+&lt;h3&gt;&lt;a href="https://iamosley.github.io/blog/blog_009.html"&gt;Remove Recognizeable Text With OCR&lt;/a&gt;&lt;/h3&gt;
+&lt;p&gt;If text can already be processed, remove it.&lt;/p&gt;</content><category term="python"></category><category term="jupyter"></category></entry><entry><title>Stencil Fonts 3</title><link href="https://iamosley.github.io/blog/blog_007.html" rel="alternate"></link><published>2019-06-19T08:57:00-04:00</published><updated>2019-06-19T08:57:00-04:00</updated><author><name>Ian Mosley</name></author><id>tag:iamosley.github.io,2019-06-19:/blog/blog_007.html</id><summary type="html">&lt;h1&gt;Exploratory Data Analysis&lt;/h1&gt;
 &lt;p&gt;How distinct are the segments and their associated letters?&lt;/p&gt;
 &lt;p&gt;If the relative position of segment centroids combined with their overall arrangement by letter is discernible (just by simple charting and univariate stats), then there should be a reasonable chance that a machine learning technique like SVM may …&lt;/p&gt;</summary><content type="html">&lt;h1&gt;Exploratory Data Analysis&lt;/h1&gt;
 &lt;p&gt;How distinct are the segments and their associated letters?&lt;/p&gt;
@@ -1396,7 +1401,7 @@ Target score is: 1, 0.345, which is the 6 cluster solution
 &lt;li&gt;While cluster 9 doesn't seem significant, it does uniquely identify 'S' from '3' and '2'&lt;/li&gt;
 &lt;/ol&gt;
 &lt;h2&gt;Up next:&lt;/h2&gt;
-&lt;h3&gt;Letter classification with SVM&lt;/h3&gt;
+&lt;h3&gt;&lt;a href="https://iamosley.github.io/blog/blog_008.html"&gt;Letter classification with SVM&lt;/a&gt;&lt;/h3&gt;
 &lt;p&gt;Investigating whether SVM can be applied to the problem of successfully labeling letters via the poly coordinates of their segments.&lt;/p&gt;</content><category term="python"></category><category term="jupyter"></category></entry><entry><title>Stencil Fonts 2</title><link href="https://iamosley.github.io/blog/blog_006.html" rel="alternate"></link><published>2019-06-18T09:32:00-04:00</published><updated>2019-06-18T09:32:00-04:00</updated><author><name>Ian Mosley</name></author><id>tag:iamosley.github.io,2019-06-18:/blog/blog_006.html</id><summary type="html">&lt;h1&gt;Cleanup Input Files&lt;/h1&gt;
 &lt;p&gt;From the same input file -- converted from a pdf -- create three files for processing:&lt;/p&gt;
 &lt;ol&gt;
@@ -1455,7 +1460,7 @@ Target score is: 1, 0.345, which is the 6 cluster solution
 &lt;img alt="alt_text" src="./images/blog_006/Sharpening.png"&gt;&lt;/p&gt;
 &lt;p&gt;The &lt;strong&gt;'S'&lt;/strong&gt; on the left is the original RGB represetation of the font. The middle font has been sharpened absolutely where any greyscale pixel is now black. Note how almost all of the segments are connected and would lead to only two centroids being calculated, when six is correct. Finally, the font on the right has been filtered with a value of 150 which provides clean discrimination of the segments without too many of their pixels being eroded (there was a lot of trial-and-error!)&lt;/p&gt;
 &lt;h2&gt;Up Next:&lt;/h2&gt;
-&lt;h3&gt;Exploratory Data Analysis!&lt;/h3&gt;
+&lt;h3&gt;&lt;a href="https://iamosley.github.io/blog/blog_007.html"&gt;Exploratory Data Analysis!&lt;/a&gt;&lt;/h3&gt;
 &lt;p&gt;Using sample data to determine if the segment-centroid idea is worthwhile.&lt;/p&gt;</content><category term="python"></category><category term="jupyter"></category></entry><entry><title>Stencil Fonts 1</title><link href="https://iamosley.github.io/blog/blog_005.html" rel="alternate"></link><published>2019-06-17T14:22:00-04:00</published><updated>2019-06-17T14:22:00-04:00</updated><author><name>Ian Mosley</name></author><id>tag:iamosley.github.io,2019-06-17:/blog/blog_005.html</id><summary type="html">&lt;h1&gt;Recognition of Dashed Stencil Fonts&lt;/h1&gt;
 &lt;p&gt;For many years the ability of computers to optically recognize characters (OCR) has been considered a solved problem. Computer models such as Tesseract and FastText can identify and label characters, words, sentences and paragraphs without difficulty with high reliability and accuracy. Currently these abilities are …&lt;/p&gt;</summary><content type="html">&lt;h1&gt;Recognition of Dashed Stencil Fonts&lt;/h1&gt;
 &lt;p&gt;For many years the ability of computers to optically recognize characters (OCR) has been considered a solved problem. Computer models such as Tesseract and FastText can identify and label characters, words, sentences and paragraphs without difficulty with high reliability and accuracy. Currently these abilities are being extended to other non-Latin alphabets with Tesseract version 4.0. Moreover, it is well within the skill of a non-computer scientist (given enough patience) to train these techniques for new languages given enough example (i.e. training) data.&lt;/p&gt;
@@ -1589,8 +1594,8 @@ A secondary objective is identifying the fonts within the context of the drawing
 
 
 &lt;h2&gt;Next Post:&lt;/h2&gt;
-&lt;h3&gt;Image cleaning.&lt;/h3&gt;
-&lt;h4&gt;Always need sharp, well-defined images in single-band greyscale to start things off.&lt;/h4&gt;</content><category term="python"></category><category term="jupyter"></category></entry><entry><title>Widgets</title><link href="https://iamosley.github.io/blog/blog_4.html" rel="alternate"></link><published>2019-03-31T21:58:00-04:00</published><updated>2019-03-31T21:58:00-04:00</updated><author><name>Ian Mosley</name></author><id>tag:iamosley.github.io,2019-03-31:/blog/blog_4.html</id><summary type="html">&lt;h1&gt;Introduction&lt;/h1&gt;
+&lt;h3&gt;&lt;a href="https://iamosley.github.io/blog/blog_006.html"&gt;Image cleaning&lt;/a&gt;&lt;/h3&gt;
+&lt;p&gt;Always need sharp, well-defined images in single-band greyscale to start things off.&lt;/p&gt;</content><category term="python"></category><category term="jupyter"></category></entry><entry><title>Widgets</title><link href="https://iamosley.github.io/blog/blog_4.html" rel="alternate"></link><published>2019-03-31T21:58:00-04:00</published><updated>2019-03-31T21:58:00-04:00</updated><author><name>Ian Mosley</name></author><id>tag:iamosley.github.io,2019-03-31:/blog/blog_4.html</id><summary type="html">&lt;h1&gt;Introduction&lt;/h1&gt;
 &lt;p&gt;No matter what you do in data science, you need data! Arghhh! &lt;br&gt;&lt;br&gt; You have to: 
 - find it
 - describe it 
